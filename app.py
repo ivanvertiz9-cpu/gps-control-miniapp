@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🛰️️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
+st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
 st.markdown("Plataforma web con corrección automática de coordenadas y marcadores telemáticos.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
@@ -69,11 +69,9 @@ if uploaded_file is not None:
                 lat = float(str(raw_lat).strip().replace(',', '.'))
                 lon = float(str(raw_lon).strip().replace(',', '.'))
                 
-                # Si vienen invertidas (latitud con valores de longitud y viceversa)
                 if abs(lat) > 50 and abs(lon) < 50:
                     lat, lon = lon, lat
                 
-                # En México la longitud debe ser estrictamente negativa
                 if lon > 0:
                     lon = -lon
                     
@@ -93,7 +91,6 @@ if uploaded_file is not None:
                     coords.append(f"{lon},{lat}")
             
             if len(coords) < 2:
-                # Respaldo total si OSRM no procesa el lote
                 fallback = []
                 for _, row in dataframe.iterrows():
                     lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
@@ -117,7 +114,6 @@ if uploaded_file is not None:
             except:
                 pass
             
-            # Respaldo por puntos directos ordenados
             fallback = []
             for _, row in dataframe.iterrows():
                 lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
@@ -223,7 +219,7 @@ if uploaded_file is not None:
   <p><i>Generado automáticamente por Mini-App Enterprise v2.4</i></p>
 </body>
 </html>"""
-                    st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
+                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
                 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
