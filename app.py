@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import requests
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -8,7 +9,7 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con ordenamiento cronológico y trazado secuencial exacto.")
+st.markdown("Plataforma web con enrutamiento OSRM segmentado por lotes para evitar saltos urbanos.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
@@ -41,7 +42,7 @@ if uploaded_file is not None:
         lat_col = next((c for c in df.columns if 'latitud' in c.lower() or 'lat' in c.lower()), df.columns[5] if len(df.columns) > 5 else None)
         lon_col = next((c for c in df.columns if 'longitud' in c.lower() or 'lon' in c.lower() or 'long' in c.lower()), df.columns[6] if len(df.columns) > 6 else None)
         
-        # Ordenamiento cronológico estricto por fecha para asegurar el inicio y fin correctos
+        # Ordenamiento cronológico estricto
         if fecha_col and fecha_col in df.columns:
             try:
                 df[fecha_col] = pd.to_datetime(df[fecha_col], errors='coerce')
@@ -75,33 +76,62 @@ if uploaded_file is not None:
             try:
                 lat = float(str(raw_lat).strip().replace(',', '.'))
                 lon = float(str(raw_lon).strip().replace(',', '.'))
-                
                 if abs(lat) > 50 and abs(lon) < 50:
                     lat, lon = lon, lat
-                
                 if lon > 0:
                     lon = -lon
-                    
                 return lat, lon
             except:
                 return 0.0, 0.0
 
-        # Función de trazado secuencial exacto punto por punto (sin atajos externos)
-        def generar_trayecto_secuencial(dataframe, lat_c, lon_c):
-            puntos = []
+        # Función de enrutamiento OSRM segmentado por lotes para evitar saltos
+        def obtener_ruta_osrm_por_lotes(dataframe, lat_c, lon_c):
+            puntos_totales = []
             for _, row in dataframe.iterrows():
                 lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
                 if 14 <= lat <= 33 and -118 <= lon <= -85:
-                    puntos.append(f"{lon},{lat},0")
-            return " ".join(puntos)
+                    puntos_totales.append((lon, lat))
+            
+            if len(puntos_totales) < 2:
+                return ""
+            
+            # Dividir en bloques de 40 puntos para que OSRM trace cada tramo por las calles exactas
+            chunk_size = 40
+            chunks = [puntos_totales[i:i + chunk_size] for i in range(0, len(puntos_totales), chunk_size - 1)]
+            
+            kml_road_coords = []
+            
+            for chunk in chunks:
+                if len(chunk) < 2:
+                    continue
+                coords_param = ";".join([f"{pt[0]},{pt[1]}" for pt in chunk])
+                url = f"http://router.project-osrm.org/route/v1/driving/{coords_param}?overview=full&geometries=geojson"
+                
+                try:
+                    response = requests.get(url, timeout=8)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if "routes" in data and len(data["routes"]) > 0:
+                            geometry = data["routes"][0]["geometry"]["coordinates"]
+                            for pt in geometry:
+                                kml_road_coords.append(f"{pt[0]},{pt[1]},0")
+                            continue
+                except:
+                    pass
+                
+                # Respaldo de tramo si un lote fallara
+                for pt in chunk:
+                    kml_road_coords.append(f"{pt[0]},{pt[1]},0")
+            
+            return " ".join(kml_road_coords)
 
         b1, b2, b3 = st.columns(3)
         
         with b1:
-            if st.button("🌐 Generar KML Completo con Ruta Secuencial y Pines"):
+            if st.button("🌐 Generar KML Completo con Enrutamiento Real y Pines"):
                 if lat_col and lon_col:
-                    with st.spinner("Generando trazado secuencial y pines telemáticos..."):
-                        coords_str = generar_trayecto_secuencial(df, lat_col, lon_col)
+                    with st.spinner("Calculando tramos carreteros reales y evitando saltos..."):
+                        coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
                         
                         placemarks_pines = []
                         for _, row in df.iterrows():
@@ -132,20 +162,20 @@ if uploaded_file is not None:
                     kml_c = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Ruta Secuencial - Unidad {unit_eval}</name>
+    <name>Ruta Vial - Unidad {unit_eval}</name>
     <Style id="pinRojo"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon></IconStyle></Style>
     <Style id="pinAmarillo"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png</href></Icon></IconStyle></Style>
     <Style id="pinVerde"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>
     <Style id="lineaRuta"><LineStyle><color>ff0000ff</color><width>4</width></LineStyle></Style>
     <Placemark>
-      <name>Trayecto Secuencial Real</name>
+      <name>Trayecto Vial Real</name>
       <styleUrl>#lineaRuta</styleUrl>
       <LineString><tessellate>1</tessellate><coordinates>{coords_str}</coordinates></LineString>
     </Placemark>
     {''.join(placemarks_pines)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_secuencial_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_vial_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
                     st.error("Faltan columnas de coordenadas.")
                 
