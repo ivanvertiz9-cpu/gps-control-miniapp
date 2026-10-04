@@ -11,7 +11,66 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
+# ==========================================
+# 🎨 ESTILOS CSS PERSONALIZADOS (COLORES Y FONDO)
+# ==========================================
+st.markdown("""
+<style>
+    /* Fondo general de la aplicación */
+    .stApp {
+        background-color: #f1f5f9;
+    }
+    
+    /* Estilo del título principal */
+    h1 {
+        color: #0f172a;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-weight: 700;
+    }
+    
+    /* Estilo de los encabezados de sección */
+    h2, h3 {
+        color: #1e293b;
+    }
+    
+    /* Personalización de la barra lateral (Sidebar) */
+    [data-testid="stSidebar"] {
+        background-color: #0f172a;
+        color: #ffffff;
+    }
+    
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Botones principales de Streamlit */
+    .stButton>button {
+        background-color: #0284c7;
+        color: white;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton>button:hover {
+        background-color: #0369a1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Tarjetas de métricas */
+    [data-testid="stMetric"] {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-left: 4px solid #0284c7;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.6")
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 # ==========================================
 # 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA
