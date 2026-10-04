@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-import json
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -10,9 +9,9 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web ligera para procesamiento telemático, análisis de paradas (0 km/h), generación de mapas KML y reportes ejecutivos con enrutamiento OSRM.")
+st.markdown("Plataforma web ligera para procesamiento telemático, análisis de paradas (0 km/h), generación de mapas KML y reportes ejecutivos.")
 
-uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV con columnas: Unidad, Evento, Ubicacion, Fecha, Velocidad, Latitud, Longitud)", type=["xlsx", "xls", "csv"])
+uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
     try:
@@ -23,16 +22,21 @@ if uploaded_file is not None:
         
         df.columns = [str(c).strip() for c in df.columns]
         
-        st.success(f"¡Archivo cargado exitosamente! Se detectaron {len(df)} registros.")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        total_records = len(df)
-        unit_eval = df['Unidad'].iloc[0] if 'Unidad' in df.columns and len(df) > 0 else "N/A"
-        
+        # Detección inteligente y flexible de columnas clave
+        unidad_col = next((c for c in df.columns if 'unidad' in c.lower()), df.columns[0])
         vel_col = next((c for c in df.columns if 'velocidad' in c.lower() or 'speed' in c.lower()), None)
-        lat_col = next((c for c in df.columns if 'latitud' in c.lower() or 'lat' in c.lower()), None)
-        lon_col = next((c for c in df.columns if 'longitud' in c.lower() or 'lon' in c.lower()), None)
+        
+        # Detección de coordenadas por nombre o por posición estricta (Columna F y G)
+        lat_col = next((c for c in df.columns if 'lat' in c.lower()), None)
+        lon_col = next((c for c in df.columns if 'lon' in c.lower() or 'long' in c.lower()), None)
+        
+        if not lat_col and len(df.columns) > 5:
+            lat_col = df.columns[5] # Columna F
+        if not lon_col and len(df.columns) > 6:
+            lon_col = df.columns[6] # Columna G
+            
+        total_records = len(df)
+        unit_eval = df[unidad_col].iloc[0] if unidad_col in df.columns and len(df) > 0 else "N/A"
         
         total_stops = 0
         max_vel = 0
@@ -41,6 +45,7 @@ if uploaded_file is not None:
             total_stops = len(df[df[vel_col] == 0])
             max_vel = df[vel_col].max()
             
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total de Registros", total_records)
         col2.metric("Unidad Evaluada", str(unit_eval))
         col3.metric("Total Paradas (0 km/h)", total_stops)
@@ -63,7 +68,6 @@ if uploaded_file is not None:
                 try:
                     lat = float(row[lat_c])
                     lon = float(row[lon_c])
-                    # Corrección automática de lat/lon si están invertidos o positivos en México
                     if lat < 0 and lon > 0:
                         lat, lon = lon, lat
                     if lon > 80 and lon < 120:
@@ -94,7 +98,7 @@ if uploaded_file is not None:
             except:
                 pass
             
-            # Respaldo de ruta directa si OSRM no responde
+            # Respaldo en línea recta si OSRM no responde
             fallback = []
             for _, row in dataframe.iterrows():
                 try:
@@ -136,7 +140,7 @@ if uploaded_file is not None:
 </kml>"""
                     st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_carretera_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas de coordenadas.")
+                    st.error("No se detectaron las columnas de coordenadas.")
                 
         with b2:
             if st.button("📍 Generar KML Paradas (0 km/h)"):
