@@ -4,6 +4,7 @@ import requests
 import time
 import io
 from datetime import datetime
+
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
     page_icon="🛰️",
@@ -11,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con detección automática de casetas, enrutamiento OSRM y marcadores telemáticos.")
+st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 
 # Base de datos integrada de Casetas (Nombre, Latitud, Longitud)
 CASETAS_DB = [
@@ -193,7 +194,7 @@ if uploaded_file is not None:
         st.subheader("📊 Vista Previa de Datos Telemáticos")
         st.dataframe(df.head(20), use_container_width=True)
         
-        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML")
+        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / HTML")
         
         def procesar_lat_lon(raw_lat, raw_lon):
             try:
@@ -242,10 +243,10 @@ if uploaded_file is not None:
             
             return " ".join(kml_road_coords)
 
-        b1, b2, b3 = st.columns(3)
+        b1, b2, b3, b4 = st.columns(4)
         
         with b1:
-            if st.button("🌐 Generar KML Completo con Carreteras y Pines"):
+            if st.button("🌐 KML Completo"):
                 if lat_col and lon_col:
                     with st.spinner("Generando ruta completa..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
@@ -283,14 +284,14 @@ if uploaded_file is not None:
     {''.join(placemarks_pines)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
                     st.error("Faltan columnas de coordenadas.")
                 
         with b2:
-            if st.button("📍 Generar KML Paradas (Con Ruta, Casetas y Paradas)"):
+            if st.button("📍 KML Paradas y Casetas"):
                 if lat_col and lon_col and vel_col:
-                    with st.spinner("Calculando ruta, casetas y paradas rojas..."):
+                    with st.spinner("Calculando ruta, casetas y paradas..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
                         
                         lat_ini, lon_ini = 0, 0
@@ -333,7 +334,7 @@ if uploaded_file is not None:
                             if lat_gps != 0 and lon_gps != 0:
                                 for c_nombre, c_lat, c_lon in CASETAS_DB:
                                     if c_nombre not in casetas_agregadas:
-                                        if abs(lat_gps - c_lat) < 0.03 and abs(lon_gps - c_lon) < 0.03 or (c_nombre.upper() in ubi or c_nombre.upper() in ev):
+                                        if (abs(lat_gps - c_lat) < 0.03 and abs(lon_gps - c_lon) < 0.03) or (c_nombre.upper() in ubi or c_nombre.upper() in ev):
                                             casetas_agregadas.add(c_nombre)
                                             desc_caseta = f"<b>[CASETA DE PEAJE]</b><br><b>Nombre:</b> {c_nombre}"
                                             kml_elements.append(f"""
