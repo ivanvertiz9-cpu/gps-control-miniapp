@@ -322,7 +322,6 @@ if uploaded_file is not None:
       <Point><coordinates>{lon_ini},{lat_ini},0</coordinates></Point>
     </Placemark>""")
 
-                        # Detección automática de Casetas cruzando contra la base de datos maestra por proximidad (< 3 km)
                         casetas_agregadas = set()
                         for _, row in df.iterrows():
                             lat_gps, lon_gps = procesar_lat_lon(row[lat_col], row[lon_col])
@@ -332,7 +331,6 @@ if uploaded_file is not None:
                             if lat_gps != 0 and lon_gps != 0:
                                 for c_nombre, c_lat, c_lon in CASETAS_DB:
                                     if c_nombre not in casetas_agregadas:
-                                        # Distancia aproximada en grados (aprox 0.03 = ~3 km)
                                         if abs(lat_gps - c_lat) < 0.03 and abs(lon_gps - c_lon) < 0.03 or (c_nombre.upper() in ubi or c_nombre.upper() in ev):
                                             casetas_agregadas.add(c_nombre)
                                             desc_caseta = f"<b>[CASETA DE PEAJE]</b><br><b>Nombre:</b> {c_nombre}"
@@ -344,7 +342,6 @@ if uploaded_file is not None:
       <Point><coordinates>{c_lon},{c_lat},0</coordinates></Point>
     </Placemark>""")
 
-                        # Paradas a 0 km/h con pin rojo pushpin y fecha/hora
                         contador_paradas = 0
                         for _, row in df.iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
@@ -403,7 +400,7 @@ if uploaded_file is not None:
   <p><i>Generado automáticamente por Mini-App Enterprise v2.4</i></p>
 </body>
 </html>"""
-                    st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
+                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
                 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
