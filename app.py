@@ -326,7 +326,7 @@ if uploaded_file is not None:
                         for _, row in df.iterrows():
                             lat_gps, lon_gps = procesar_lat_lon(row[lat_col], row[lon_col])
                             ev = str(row[evento_col]).upper() if evento_col in df.columns else ''
-                            ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ''
+                            ubi = str(row[ubicacion_col]).upper() if evento_col in df.columns else ''
                             if lat_gps != 0 and lon_gps != 0:
                                 for c_nombre, c_lat, c_lon in CASETAS_DB:
                                     if c_nombre not in casetas_agregadas:
@@ -430,7 +430,7 @@ if uploaded_file is not None:
                         html_rows = []
                         contador_paso = 1
                         
-                        # 1. ORIGEN
+                        # 1. ORIGEN (Primer punto válido)
                         for _, row in df.iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
@@ -448,25 +448,30 @@ if uploaded_file is not None:
                                 contador_paso += 1
                                 break
                         
-                        # 2. INTERMEDIOS (Casetas y Paradas)
+                        # 2. INTERMEDIOS (Casetas y Paradas con la lógica exacta de la macro: detenerse y reiniciar)
                         i = 0
                         while i < len(df):
                             row = df.iloc[i]
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             ev = str(row[evento_col]).upper() if evento_col in df.columns else ""
-                            ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ""
+                            ubi = str(row[ubicacion_col]).upper() if evento_col in df.columns else ""
                             vel = float(row[vel_col]) if vel_col else 0
                             f_val = str(row[fecha_col]) if fecha_col in df.columns else ""
                             
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
-                                # Detectar caseta
-                                es_caseta = any(c[0].upper() in ubi or c[0].upper() in ev for c in CASETAS_DB) or "CASETA" in ev or "PEAJE" in ev
-                                if es_caseta:
-                                    nombre_caseta = next((c[0] for c in CASETAS_DB if c[0].upper() in ubi or c[0].upper() in ev), "CASETA DE PEAJE")
+                                # Detección de casetas
+                                caseta_encontrada = ""
+                                for c_nombre, c_lat, c_lon in CASETAS_DB:
+                                    if abs(lat - c_lat) < 0.03 and abs(lon - c_lon) < 0.03 or (c_nombre.upper() in ubi or c_nombre.upper() in ev):
+                                        caseta_encontrada = c_nombre
+                                        break
+                                
+                                if caseta_encontrada != "" or "CASETA" in ev or "PEAJE" in ev or "CASETA" in ubi:
+                                    nombre_c = caseta_encontrada if caseta_encontrada != "" else "CASETA DE PEAJE"
                                     html_rows.append(f"""<tr class="caseta">
                                         <td>{contador_paso}</td>
                                         <td>CASETA DE PEAJE</td>
-                                        <td>{nombre_caseta} - {row[ubicacion_col] if ubicacion_col in df.columns else ''}</td>
+                                        <td>{nombre_c} - {row[ubicacion_col] if ubicacion_col in df.columns else ''}</td>
                                         <td>{lat:.4f}, {lon:.4f}</td>
                                         <td>{f_val}</td>
                                         <td>Paso</td>
@@ -474,13 +479,13 @@ if uploaded_file is not None:
                                     </tr>""")
                                     contador_paso += 1
                                     i += 1
-                                # Detectar parada (0 km/h)
+                                # Detección de Paradas cuando la velocidad es 0 km/h
                                 elif vel == 0 and pd.notnull(row[fecha_col]):
                                     t_inicio = pd.to_datetime(row[fecha_col])
                                     ubi_parada = str(row[ubicacion_col]) if ubicacion_col in df.columns else ""
                                     lat_p, lon_p = lat, lon
                                     
-                                    # Buscar reanudación de marcha (> 0 km/h)
+                                    # Buscar la línea posterior donde la unidad reinicia la marcha (> 0 km/h)
                                     j = i + 1
                                     t_fin = t_inicio
                                     texto_fin = "En detención"
@@ -493,9 +498,22 @@ if uploaded_file is not None:
                                             break
                                         j += 1
                                     
+                                    # Si llega al final sin reiniciar marcha
+                                    if j >= len(df):
+                                        ultima_valida = df.iloc[-1]
+                                        if pd.notnull(ultima_valida[fecha_col]):
+                                            t_fin = pd.to_datetime(ultima_valida[fecha_col])
+                                            texto_fin = str(ultima_valida[fecha_col])
+                                    
                                     minutos = int((t_fin - t_inicio).total_seconds() / 60)
+                                    
+                                    # Solo incluir paradas mayores a 5 minutos
                                     if minutos > 5:
-                                        t_texto = f"{minutos} min" if minutos < 60 else f"{minutos // 60}h {minutos % 60}m"
+                                        if minutos < 60:
+                                            t_texto = f"{minutos} min"
+                                        else:
+                                            t_texto = f"{minutos // 60}h {minutos % 60}m"
+                                            
                                         html_rows.append(f"""<tr class="parada">
                                             <td>{contador_paso}</td>
                                             <td>PARADA / DETENIDO</td>
@@ -506,13 +524,15 @@ if uploaded_file is not None:
                                             <td class="tiempo">{t_texto}</td>
                                         </tr>""")
                                         contador_paso += 1
+                                    
+                                    # Avanzar el puntero hasta el momento en que reinició la marcha
                                     i = j if j > i else i + 1
                                 else:
                                     i += 1
                             else:
                                 i += 1
 
-                        # 3. DESTINO
+                        # 3. DESTINO (Último punto válido)
                         for _, row in df.iloc[::-1].iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
@@ -533,7 +553,7 @@ if uploaded_file is not None:
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Control de Ruta - Unidad {unit_eval}</title>
+<title>Control de Ruta</title>
 <style>
   body {{ font-family: Arial, sans-serif; margin: 20px; color: #1e293b; background-color: #f8fafc; }}
   .header {{ background-color: #0f172a; color: white; padding: 15px; text-align: center; border-radius: 6px; }}
@@ -556,13 +576,13 @@ if uploaded_file is not None:
     <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
   </div>
   <div class="header">
-    <h2 style="margin:0;">CONTROL DE RUTA - UNIDAD: {unit_eval}</h2>
-    <div class="sub">Documento Oficial de Control de Tráfico y Tiempos de Permanencia</div>
+    <h2 style="margin:0;">CONTROL DE RUTA</h2>
+    <div class="sub">Documento de Control de Tráfico (Paradas y Tiempos de Permanencia)</div>
   </div>
   <table>
     <thead>
       <tr>
-        <th style="width:4%;">Mov.</th>
+        <th style="width:4%;">Movimiento</th>
         <th style="width:15%;">Tipo de Evento</th>
         <th style="width:33%;">Ubicación / Referencia</th>
         <th style="width:12%;">Coordenadas</th>
