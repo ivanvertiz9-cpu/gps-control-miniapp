@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import time
 import io
+from datetime import datetime
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -11,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con enrutamiento OSRM, detección de casetas y geocodificación inversa.")
+st.markdown("Plataforma web con enrutamiento OSRM, detección de casetas, geocodificación y reporte de control de ruta.")
 
 # Base de datos integrada de Casetas
 CASETAS_DB = [
@@ -193,7 +194,7 @@ if uploaded_file is not None:
         st.subheader("📊 Vista Previa de Datos Telemáticos")
         st.dataframe(df.head(20), use_container_width=True)
         
-        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / Excel")
+        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / Excel / HTML")
         
         def procesar_lat_lon(raw_lat, raw_lon):
             try:
@@ -242,10 +243,10 @@ if uploaded_file is not None:
             
             return " ".join(kml_road_coords)
 
-        b1, b2, b3 = st.columns(3)
+        b1, b2, b3, b4 = st.columns(4)
         
         with b1:
-            if st.button("🌐 KML Completo (Ruta y Pines)"):
+            if st.button("🌐 KML Completo"):
                 if lat_col and lon_col:
                     with st.spinner("Generando ruta completa..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
@@ -283,16 +284,15 @@ if uploaded_file is not None:
     {''.join(placemarks_pines)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas de coordenadas.")
+                    st.error("Faltan coordenadas.")
                 
         with b2:
             if st.button("📍 KML Paradas y Casetas"):
                 if lat_col and lon_col and vel_col:
-                    with st.spinner("Calculando ruta, casetas y paradas rojas..."):
+                    with st.spinner("Calculando ruta y casetas..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
-                        
                         lat_ini, lon_ini = 0, 0
                         lat_fin, lon_fin = 0, 0
                         for _, row in df.iterrows():
@@ -307,7 +307,6 @@ if uploaded_file is not None:
                                 break
                         
                         kml_elements = []
-                        
                         if coords_str:
                             kml_elements.append(f"""
     <Placemark>
@@ -315,7 +314,6 @@ if uploaded_file is not None:
       <styleUrl>#estiloLineaNavegacion</styleUrl>
       <LineString><tessellate>1</tessellate><coordinates>{coords_str}</coordinates></LineString>
     </Placemark>""")
-                        
                         if lat_ini != 0:
                             kml_elements.append(f"""
     <Placemark>
@@ -329,7 +327,6 @@ if uploaded_file is not None:
                             lat_gps, lon_gps = procesar_lat_lon(row[lat_col], row[lon_col])
                             ev = str(row[evento_col]).upper() if evento_col in df.columns else ''
                             ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ''
-                            
                             if lat_gps != 0 and lon_gps != 0:
                                 for c_nombre, c_lat, c_lon in CASETAS_DB:
                                     if c_nombre not in casetas_agregadas:
@@ -351,7 +348,6 @@ if uploaded_file is not None:
                                 vel = float(row[vel_col]) if vel_col else 0
                                 fec = str(row[fecha_col]) if fecha_col in df.columns else ''
                                 ubi = row[ubicacion_col] if ubicacion_col in df.columns else ''
-                                
                                 if vel == 0:
                                     contador_paradas += 1
                                     desc_parada = f"<b>[UNIDAD DETENIDA]</b><br><b>Unidad:</b> {unit_eval}<br><b>Fecha/Hora:</b> {fec}<br><b>Ubicación:</b> {ubi}"
@@ -383,19 +379,17 @@ if uploaded_file is not None:
     {''.join(kml_elements)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Paradas y Casetas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas necesarias para procesar las paradas.")
+                    st.error("Faltan columnas necesarias.")
                 
         with b3:
-            if st.button("🔍 Extraer Ubicaciones (Nominatim)"):
+            if st.button("🔍 Extraer Ubicaciones"):
                 if lat_col and lon_col and ubicacion_col:
-                    with st.spinner("Consultando direcciones en OpenStreetMap renglón por renglón..."):
+                    with st.spinner("Consultando direcciones en OpenStreetMap..."):
                         progress_bar = st.progress(0)
                         total_filas = len(df)
-                        
                         df_geocoded = df.copy()
-                        # Blindaje clave: Convertir la columna completa a tipo string para evitar conflictos de tipos de datos
                         df_geocoded[ubicacion_col] = df_geocoded[ubicacion_col].astype(str)
                         
                         for idx, row in df_geocoded.iterrows():
@@ -414,11 +408,9 @@ if uploaded_file is not None:
                                             df_geocoded.at[idx, ubicacion_col] = "Ubicación no encontrada"
                                 except:
                                     df_geocoded.at[idx, ubicacion_col] = "Error de conexión"
-                                
                                 time.sleep(1.0)
                             else:
                                 df_geocoded.at[idx, ubicacion_col] = "Coordenada fuera de rango"
-                            
                             progress_bar.progress(min(1.0, (idx + 1) / total_filas))
                         
                         output = io.BytesIO()
@@ -426,16 +418,175 @@ if uploaded_file is not None:
                             df_geocoded.to_excel(writer, index=False, sheet_name='Telemetría Geocodificada')
                         excel_data = output.getvalue()
                         
-                        st.success("¡Geocodificación inversa completada con éxito!")
+                        st.success("¡Geocodificación completada!")
+                        st.download_button("📥 Descargar Excel con Ubicaciones", data=excel_data, file_name=f"telemetria_ubicaciones_{unit_eval}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                else:
+                    st.error("No se detectó columna de ubicación.")
+
+        with b4:
+            if st.button("📋 Control de Ruta (HTML)"):
+                if lat_col and lon_col and fecha_col:
+                    with st.spinner("Generando reporte de control de ruta y paradas..."):
+                        html_rows = []
+                        contador_paso = 1
+                        
+                        # 1. ORIGEN
+                        for _, row in df.iterrows():
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            if 10 <= lat <= 35 and -120 <= lon <= -80:
+                                f_val = str(row[fecha_col]) if fecha_col in df.columns else ""
+                                u_val = str(row[ubicacion_col]) if ubicacion_col in df.columns else ""
+                                html_rows.append(f"""<tr class="orig">
+                                    <td>{contador_paso}</td>
+                                    <td>ORIGEN / SALIDA</td>
+                                    <td>{u_val}</td>
+                                    <td>{lat:.4f}, {lon:.4f}</td>
+                                    <td>{f_val}</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                </tr>""")
+                                contador_paso += 1
+                                break
+                        
+                        # 2. INTERMEDIOS (Casetas y Paradas)
+                        i = 0
+                        while i < len(df):
+                            row = df.iloc[i]
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            ev = str(row[evento_col]).upper() if evento_col in df.columns else ""
+                            ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ""
+                            vel = float(row[vel_col]) if vel_col else 0
+                            f_val = str(row[fecha_col]) if fecha_col in df.columns else ""
+                            
+                            if 10 <= lat <= 35 and -120 <= lon <= -80:
+                                # Detectar caseta
+                                es_caseta = any(c[0].upper() in ubi or c[0].upper() in ev for c in CASETAS_DB) or "CASETA" in ev or "PEAJE" in ev
+                                if es_caseta:
+                                    nombre_caseta = next((c[0] for c in CASETAS_DB if c[0].upper() in ubi or c[0].upper() in ev), "CASETA DE PEAJE")
+                                    html_rows.append(f"""<tr class="caseta">
+                                        <td>{contador_paso}</td>
+                                        <td>CASETA DE PEAJE</td>
+                                        <td>{nombre_caseta} - {row[ubicacion_col] if ubicacion_col in df.columns else ''}</td>
+                                        <td>{lat:.4f}, {lon:.4f}</td>
+                                        <td>{f_val}</td>
+                                        <td>Paso</td>
+                                        <td>Paso</td>
+                                    </tr>""")
+                                    contador_paso += 1
+                                    i += 1
+                                # Detectar parada (0 km/h)
+                                elif vel == 0 and pd.notnull(row[fecha_col]):
+                                    t_inicio = pd.to_datetime(row[fecha_col])
+                                    ubi_parada = str(row[ubicacion_col]) if ubicacion_col in df.columns else ""
+                                    lat_p, lon_p = lat, lon
+                                    
+                                    # Buscar reanudación de marcha (> 0 km/h)
+                                    j = i + 1
+                                    t_fin = t_inicio
+                                    texto_fin = "En detención"
+                                    while j < len(df):
+                                        next_row = df.iloc[j]
+                                        next_vel = float(next_row[vel_col]) if vel_col else 0
+                                        if next_vel > 0 and pd.notnull(next_row[fecha_col]):
+                                            t_fin = pd.to_datetime(next_row[fecha_col])
+                                            texto_fin = str(next_row[fecha_col])
+                                            break
+                                        j += 1
+                                    
+                                    minutos = int((t_fin - t_inicio).total_seconds() / 60)
+                                    if minutos > 5:
+                                        t_texto = f"{minutos} min" if minutos < 60 else f"{minutos // 60}h {minutos % 60}m"
+                                        html_rows.append(f"""<tr class="parada">
+                                            <td>{contador_paso}</td>
+                                            <td>PARADA / DETENIDO</td>
+                                            <td>{ubi_parada}</td>
+                                            <td>{lat_p:.4f}, {lon_p:.4f}</td>
+                                            <td>{t_inicio}</td>
+                                            <td>{texto_fin}</td>
+                                            <td class="tiempo">{t_texto}</td>
+                                        </tr>""")
+                                        contador_paso += 1
+                                    i = j if j > i else i + 1
+                                else:
+                                    i += 1
+                            else:
+                                i += 1
+
+                        # 3. DESTINO
+                        for _, row in df.iloc[::-1].iterrows():
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            if 10 <= lat <= 35 and -120 <= lon <= -80:
+                                f_val = str(row[fecha_col]) if fecha_col in df.columns else ""
+                                u_val = str(row[ubicacion_col]) if ubicacion_col in df.columns else ""
+                                html_rows.append(f"""<tr class="dest">
+                                    <td>{contador_paso}</td>
+                                    <td>DESTINO / LLEGADA</td>
+                                    <td>{u_val}</td>
+                                    <td>{lat:.4f}, {lon:.4f}</td>
+                                    <td>{f_val}</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                </tr>""")
+                                break
+
+                        html_report = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de Ruta - Unidad {unit_eval}</title>
+<style>
+  body {{ font-family: Arial, sans-serif; margin: 20px; color: #1e293b; background-color: #f8fafc; }}
+  .header {{ background-color: #0f172a; color: white; padding: 15px; text-align: center; border-radius: 6px; }}
+  .sub {{ font-size: 11px; color: #94a3b8; margin-top: 4px; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+  th {{ background-color: #1e293b; color: white; padding: 10px; font-size: 11px; text-align: left; }}
+  td {{ padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }}
+  .orig {{ background-color: #dcfce7; font-weight: bold; }}
+  .caseta {{ background-color: #fef3c7; font-weight: bold; }}
+  .parada {{ background-color: #fee2e2; }}
+  .dest {{ background-color: #e0e7ff; font-weight: bold; }}
+  .tiempo {{ font-weight: bold; color: #991b1b; }}
+  .no-print {{ margin-bottom: 15px; text-align: right; }}
+  .btn-print {{ padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
+  @media print {{ body {{ background: white; margin: 0; }} .no-print {{ display: none; }} }}
+</style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
+  </div>
+  <div class="header">
+    <h2 style="margin:0;">CONTROL DE RUTA - UNIDAD: {unit_eval}</h2>
+    <div class="sub">Documento Oficial de Control de Tráfico y Tiempos de Permanencia</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:4%;">Mov.</th>
+        <th style="width:15%;">Tipo de Evento</th>
+        <th style="width:33%;">Ubicación / Referencia</th>
+        <th style="width:12%;">Coordenadas</th>
+        <th style="width:13%;">Inicio de detenido</th>
+        <th style="width:13%;">Fin / Reinicio</th>
+        <th style="width:10%;">T. Detenido</th>
+      </tr>
+    </thead>
+    <tbody>
+      {''.join(html_rows)}
+    </tbody>
+  </table>
+</body>
+</html>"""
+                        st.success("¡Reporte de Control de Ruta HTML generado con éxito!")
                         st.download_button(
-                            "📥 Descargar Excel con Ubicaciones",
-                            data=excel_data,
-                            file_name=f"telemetria_ubicaciones_{unit_eval}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            "📥 Descargar Reporte HTML",
+                            data=html_report,
+                            file_name=f"control_ruta_{unit_eval}.html",
+                            mime="text/html"
                         )
                 else:
-                    st.error("No se detectó la columna de Ubicación o Coordenadas en el archivo.")
-                
+                    st.error("Faltan columnas de coordenadas o fecha.")
+
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
 else:
