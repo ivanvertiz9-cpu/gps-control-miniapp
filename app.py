@@ -306,7 +306,7 @@ if uploaded_file is not None:
                                 contador_paso += 1
                                 break
                         
-                        # 2. INTERMEDIOS (Estrictamente Paradas de 0 km/h y su reinicio de marcha)
+                        # 2. INTERMEDIOS (Paradas estrictas de 0 km/h y reinicio de marcha)
                         i = 0
                         while i < len(df):
                             row = df.iloc[i]
@@ -325,7 +325,7 @@ if uploaded_file is not None:
                                     texto_fin = "En detención"
                                     while j < len(df):
                                         next_row = df.iloc[j]
-                                        next_vel = float(next_row[vel_col]) if next_vel else 0
+                                        next_vel = float(next_row[vel_col]) if next_row[vel_col] is not None else 0
                                         if next_vel > 0 and pd.notnull(next_row[fecha_col]):
                                             t_fin = pd.to_datetime(next_row[fecha_col])
                                             texto_fin = str(next_row[fecha_col])
@@ -404,7 +404,7 @@ if uploaded_file is not None:
 </head>
 <body>
   <div class="no-print">
-    <button class="btn-print" onclick="window.print()">🖨️️ Guardar como PDF / Imprimir</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
   </div>
   <div class="header">
     <h2 style="margin:0;">CONTROL DE RUTA</h2>
