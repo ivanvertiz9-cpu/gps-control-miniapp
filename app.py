@@ -72,7 +72,7 @@ st.markdown("""
     /* 🎯 ALINEACIÓN PERFECTA: Elimina el margen inferior predeterminado de Streamlit */
     div[data-testid="stHorizontalBlock"] div.stButton, 
     div[data-testid="stHorizontalBlock"] div.stDownloadButton {
-        margin-bottom: -10px !important;
+        margin-bottom: -7px !important;
     }
 
     /* Tarjetas de métricas */
