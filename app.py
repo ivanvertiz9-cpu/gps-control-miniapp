@@ -9,7 +9,7 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con enrutamiento OSRM segmentado por lotes para evitar saltos urbanos.")
+st.markdown("Plataforma web con enrutamiento OSRM y generación avanzada de KML de Paradas, Casetas y Ruta.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
@@ -42,7 +42,7 @@ if uploaded_file is not None:
         lat_col = next((c for c in df.columns if 'latitud' in c.lower() or 'lat' in c.lower()), df.columns[5] if len(df.columns) > 5 else None)
         lon_col = next((c for c in df.columns if 'longitud' in c.lower() or 'lon' in c.lower() or 'long' in c.lower()), df.columns[6] if len(df.columns) > 6 else None)
         
-        # Ordenamiento cronológico estricto
+        # Orden cronológico estricto
         if fecha_col and fecha_col in df.columns:
             try:
                 df[fecha_col] = pd.to_datetime(df[fecha_col], errors='coerce')
@@ -84,7 +84,6 @@ if uploaded_file is not None:
             except:
                 return 0.0, 0.0
 
-        # Función de enrutamiento OSRM segmentado por lotes para evitar saltos
         def obtener_ruta_osrm_por_lotes(dataframe, lat_c, lon_c):
             puntos_totales = []
             for _, row in dataframe.iterrows():
@@ -95,10 +94,8 @@ if uploaded_file is not None:
             if len(puntos_totales) < 2:
                 return ""
             
-            # Dividir en bloques de 40 puntos para que OSRM trace cada tramo por las calles exactas
             chunk_size = 40
             chunks = [puntos_totales[i:i + chunk_size] for i in range(0, len(puntos_totales), chunk_size - 1)]
-            
             kml_road_coords = []
             
             for chunk in chunks:
@@ -106,7 +103,6 @@ if uploaded_file is not None:
                     continue
                 coords_param = ";".join([f"{pt[0]},{pt[1]}" for pt in chunk])
                 url = f"http://router.project-osrm.org/route/v1/driving/{coords_param}?overview=full&geometries=geojson"
-                
                 try:
                     response = requests.get(url, timeout=8)
                     if response.status_code == 200:
@@ -118,8 +114,6 @@ if uploaded_file is not None:
                             continue
                 except:
                     pass
-                
-                # Respaldo de tramo si un lote fallara
                 for pt in chunk:
                     kml_road_coords.append(f"{pt[0]},{pt[1]},0")
             
@@ -128,11 +122,10 @@ if uploaded_file is not None:
         b1, b2, b3 = st.columns(3)
         
         with b1:
-            if st.button("🌐 Generar KML Completo con Enrutamiento Real y Pines"):
+            if st.button("🌐 Generar KML Completo con Carreteras y Pines"):
                 if lat_col and lon_col:
-                    with st.spinner("Calculando tramos carreteros reales y evitando saltos..."):
+                    with st.spinner("Generando ruta completa..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
-                        
                         placemarks_pines = []
                         for _, row in df.iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
@@ -141,16 +134,8 @@ if uploaded_file is not None:
                                 ev = row[evento_col] if evento_col in df.columns else 'Reporte'
                                 fec = str(row[fecha_col]) if fecha_col in df.columns else ''
                                 ubi = row[ubicacion_col] if ubicacion_col in df.columns else ''
-                                
-                                if vel == 0:
-                                    estilo = "#pinRojo"
-                                elif vel <= 40:
-                                    estilo = "#pinAmarillo"
-                                else:
-                                    estilo = "#pinVerde"
-                                    
+                                estilo = "#pinRojo" if vel == 0 else ("#pinAmarillo" if vel <= 40 else "#pinVerde")
                                 desc = f"<b>Unidad:</b> {unit_eval}<br><b>Evento:</b> {ev}<br><b>Fecha:</b> {fec}<br><b>Velocidad:</b> {vel} km/h<br><b>Ubicación:</b> {ubi}"
-                                
                                 placemarks_pines.append(f"""
     <Placemark>
       <name>{unit_eval} ({vel} km/h)</name>
@@ -162,7 +147,7 @@ if uploaded_file is not None:
                     kml_c = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Ruta Vial - Unidad {unit_eval}</name>
+    <name>Ruta y Telemetría - Unidad {unit_eval}</name>
     <Style id="pinRojo"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon></IconStyle></Style>
     <Style id="pinAmarillo"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png</href></Icon></IconStyle></Style>
     <Style id="pinVerde"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>
@@ -175,38 +160,110 @@ if uploaded_file is not None:
     {''.join(placemarks_pines)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_vial_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
                     st.error("Faltan columnas de coordenadas.")
                 
         with b2:
-            if st.button("📍 Generar KML Paradas (0 km/h)"):
+            if st.button("📍 Generar KML Paradas (Con Ruta, Casetas y Paradas)"):
                 if lat_col and lon_col and vel_col:
-                    paradas_df = df[df[vel_col] == 0]
-                    placemarks = []
-                    for _, row in paradas_df.iterrows():
-                        lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
-                        if lat != 0 and lon != 0:
-                            ev = row[evento_col] if evento_col in df.columns else 'Parada'
-                            fec = str(row[fecha_col]) if fecha_col in df.columns else ''
-                            ubi = row[ubicacion_col] if ubicacion_col in df.columns else ''
-                            placemarks.append(f"""
+                    with st.spinner("Generando KML de Paradas y Casetas con ruta de fondo..."):
+                        # 1. Trazado de ruta de fondo por carretera
+                        coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
+                        
+                        # 2. Encontrar Origen y Destino válidos
+                        lat_ini, lon_ini = 0, 0
+                        lat_fin, lon_fin = 0, 0
+                        for _, row in df.iterrows():
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            if lat != 0 and lon != 0:
+                                lat_ini, lon_ini = lat, lon
+                                break
+                        for _, row in df.iloc[::-1].iterrows():
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            if lat != 0 and lon != 0:
+                                lat_fin, lon_fin = lat, lon
+                                break
+                        
+                        # 3. Construir elementos KML (Ruta + Origen + Destino + Casetas + Paradas 0 km/h)
+                        kml_elements = []
+                        
+                        # Línea de ruta de fondo
+                        if coords_str:
+                            kml_elements.append(f"""
     <Placemark>
-      <name>Parada (0 km/h)</name>
-      <description><![CDATA[<b>Unidad:</b> {unit_eval}<br><b>Fecha:</b> {fec}<br><b>Ubicación:</b> {ubi}]]></description>
+      <name>Ruta Carretera</name>
+      <styleUrl>#estiloLineaNavegacion</styleUrl>
+      <LineString><tessellate>1</tessellate><coordinates>{coords_str}</coordinates></LineString>
+    </Placemark>""")
+                        
+                        # Origen
+                        if lat_ini != 0:
+                            kml_elements.append(f"""
+    <Placemark>
+      <name>ORIGEN / INICIO</name>
+      <styleUrl>#pinInicio</styleUrl>
+      <Point><coordinates>{lon_ini},{lat_ini},0</coordinates></Point>
+    </Placemark>""")
+
+                        # Iterar registros para detectar Casetas y Paradas (0 km/h)
+                        contador_paradas = 0
+                        contador_casetas = 0
+                        for _, row in df.iterrows():
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            if lat != 0 and lon != 0:
+                                vel = float(row[vel_col]) if vel_col else 0
+                                ev = str(row[evento_col]).upper() if evento_col in df.columns else ''
+                                ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ''
+                                fec = str(row[fecha_col]) if fecha_col in df.columns else ''
+                                
+                                # Detección de casetas
+                                if "CASETA" in ev or "CASETA" in ubi or "TEPOTZOTLÁN" in ev:
+                                    contador_casetas += 1
+                                    desc_caseta = f"<b>[CASETA DE peaje]</b><br><b>Ubicación:</b> {ubi}"
+                                    kml_elements.append(f"""
+    <Placemark>
+      <name>Caseta Peaje #{contador_casetas}</name>
+      <styleUrl>#pinCaseta</styleUrl>
+      <description><![CDATA[{desc_caseta}]]></description>
       <Point><coordinates>{lon},{lat},0</coordinates></Point>
     </Placemark>""")
-                    
+                                # Detección de paradas (0 km/h)
+                                elif vel == 0:
+                                    contador_paradas += 1
+                                    desc_parada = f"<b>[UNIDAD DETENIDA]</b><br><b>Unidad:</b> {unit_eval}<br><b>Fecha/Hora:</b> {fec}<br><b>Ubicación:</b> {ubi}"
+                                    kml_elements.append(f"""
+    <Placemark>
+      <name>Parada #{contador_paradas} ({fec})</name>
+      <styleUrl>#pinDetenido</styleUrl>
+      <description><![CDATA[{desc_parada}]]></description>
+      <Point><coordinates>{lon},{lat},0</coordinates></Point>
+    </Placemark>""")
+
+                        # Destino
+                        if lat_fin != 0:
+                            kml_elements.append(f"""
+    <Placemark>
+      <name>DESTINO / FIN</name>
+      <styleUrl>#pinFin</styleUrl>
+      <Point><coordinates>{lon_fin},{lat_fin},0</coordinates></Point>
+    </Placemark>""")
+
                     kml_p = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Paradas - Unidad {unit_eval}</name>
-    {''.join(placemarks)}
+    <name>Ruta de Navegación con Casetas y Paradas - {unit_eval}</name>
+    <Style id="estiloLineaNavegacion"><LineStyle><color>ffFF8800</color><width>5</width></LineStyle></Style>
+    <Style id="pinInicio"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>
+    <Style id="pinFin"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-square.png</href></Icon></IconStyle></Style>
+    <Style id="pinDetenido"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href></Icon></IconStyle></Style>
+    <Style id="pinCaseta"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-blank.png</href></Icon></IconStyle></Style>
+    {''.join(kml_elements)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Paradas y Casetas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas para procesar paradas.")
+                    st.error("Faltan columnas necesarias para procesar las paradas.")
                 
         with b3:
             if st.button("📋 Generar Reporte de Control de Ruta (HTML)"):
