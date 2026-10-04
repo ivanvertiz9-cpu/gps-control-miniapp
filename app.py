@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 ESTILOS CSS PERSONALIZADOS (BOTONES GRANDES)
+# 🎨 ESTILOS CSS CORREGIDOS (BOTONES GRANDES Y FUENTE)
 # ==========================================
 st.markdown("""
 <style>
@@ -43,26 +43,33 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
     
-    /* 🚀 BOTONES MÁS GRANDES Y LLAMATIVOS */
-    .stButton>button {
-        background-color: #0284c7;
-        color: white;
-        border-radius: 8px;
-        border: none;
-        font-weight: 700;
-        font-size: 16px !important;       /* Texto más grande */
-        padding: 0.75rem 1.5rem !important; /* Más altura y ancho interno */
-        width: 100%;                      /* Ocupar todo el ancho de su columna */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
+    /* 🚀 BOTONES Y ENLACES DE DESCARGA GRANDES Y VISIBLES */
+    div.stButton > button, div.stDownloadButton > button {
+        background-color: #0284c7 !important;
+        color: white !important;
+        border-radius: 10px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;       /* Texto grande y claro */
+        padding: 1rem 1.5rem !important;  /* Altura y relleno amplios */
+        width: 100% !important;           /* Ocupar toda la columna */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s ease !important;
     }
     
-    .stButton>button:hover {
-        background-color: #0369a1;
-        box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);      /* Efecto visual al pasar el cursor */
+    div.stButton > button:hover, div.stDownloadButton > button:hover {
+        background-color: #0369a1 !important;
+        box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.25) !important;
+        transform: translateY(-2px);
     }
     
+    /* Forzar tamaño de texto interno del botón en Streamlit */
+    div.stButton > button p, div.stDownloadButton > button p {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: white !important;
+    }
+
     /* Tarjetas de métricas */
     [data-testid="stMetric"] {
         background-color: #ffffff;
@@ -73,7 +80,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.7")
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 # ==========================================
