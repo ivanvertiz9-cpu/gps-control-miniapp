@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import requests
+import time
+import io
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -9,9 +11,9 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con detección automática de casetas, enrutamiento OSRM y marcadores telemáticos.")
+st.markdown("Plataforma web con enrutamiento OSRM, detección de casetas y geocodificación inversa.")
 
-# Base de datos integrada de Casetas (Nombre, Latitud, Longitud)
+# Base de datos integrada de Casetas
 CASETAS_DB = [
     ("Esperanza", 18.870777, -97.385869), ("Amozoc II", 19.063585, -98.069075), ("Cantona", 19.507568, -97.497774),
     ("Cantona A1", 19.506554, -97.495453), ("Cantona A2", 19.509866, -97.497172), ("Cuapiaxtla", 19.310368, -97.797562),
@@ -191,7 +193,7 @@ if uploaded_file is not None:
         st.subheader("📊 Vista Previa de Datos Telemáticos")
         st.dataframe(df.head(20), use_container_width=True)
         
-        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML")
+        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / Excel")
         
         def procesar_lat_lon(raw_lat, raw_lon):
             try:
@@ -243,7 +245,7 @@ if uploaded_file is not None:
         b1, b2, b3 = st.columns(3)
         
         with b1:
-            if st.button("🌐 Generar KML Completo con Carreteras y Pines"):
+            if st.button("🌐 KML Completo (Ruta y Pines)"):
                 if lat_col and lon_col:
                     with st.spinner("Generando ruta completa..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
@@ -286,7 +288,7 @@ if uploaded_file is not None:
                     st.error("Faltan columnas de coordenadas.")
                 
         with b2:
-            if st.button("📍 Generar KML Paradas (Con Ruta, Casetas y Paradas)"):
+            if st.button("📍 KML Paradas y Casetas"):
                 if lat_col and lon_col and vel_col:
                     with st.spinner("Calculando ruta, casetas y paradas rojas..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
@@ -386,21 +388,53 @@ if uploaded_file is not None:
                     st.error("Faltan columnas necesarias para procesar las paradas.")
                 
         with b3:
-            if st.button("📋 Generar Reporte de Control de Ruta (HTML)"):
-                html_report = f"""<html>
-<head><meta charset="utf-8"><title>Reporte Control de Ruta</title></head>
-<body style="font-family:Arial; padding:20px;">
-  <h2>Reporte Oficial de Control de Ruta y Telemetría</h2>
-  <hr>
-  <p><b>Unidad Evaluada:</b> {unit_eval}</p>
-  <p><b>Total de Registros Procesados:</b> {total_records}</p>
-  <p><b>Total de Paradas detectadas (0 km/h):</b> {total_stops}</p>
-  <p><b>Velocidad Máxima Registrada:</b> {max_vel} km/h</p>
-  <br>
-  <p><i>Generado automáticamente por Mini-App Enterprise v2.4</i></p>
-</body>
-</html>"""
-                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
+            if st.button("🔍 Extraer Ubicaciones (Nominatim)"):
+                if lat_col and lon_col and ubicacion_col:
+                    with st.spinner("Consultando direcciones en OpenStreetMap... (Esto puede tomar unos segundos por respeto a la API)"):
+                        progress_bar = st.progress(0)
+                        total_filas = len(df)
+                        
+                        # Copiar df para modificar ubicaciones vacías
+                        df_geocoded = df.copy()
+                        
+                        for idx, row in df_geocoded.iterrows():
+                            current_ubi = str(row[ubicacion_col]).strip()
+                            if current_ubi == "" or current_ubi.lower() == "nan":
+                                lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                                if 14 <= lat <= 33 and -118 <= lon <= -85:
+                                    url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=18&addressdetails=1"
+                                    headers = {"User-Agent": "MiniAppEnterprise_GPS_Tool"}
+                                    try:
+                                        res = requests.get(url, headers=headers, timeout=5)
+                                        if res.status_code == 200:
+                                            data = res.json()
+                                            display_name = data.get("display_name", "")
+                                            if display_name:
+                                                df_geocoded.at[idx, ubicacion_col] = display_name
+                                            else:
+                                                df_geocoded.at[idx, ubicacion_col] = "Ubicación no encontrada"
+                                    except:
+                                        pass
+                                    # Pausa obligatoria de 1 segundo para respetar políticas de OpenStreetMap
+                                    time.sleep(1.0)
+                            
+                            progress_bar.progress(min(1.0, (idx + 1) / total_filas))
+                        
+                        # Generar archivo Excel en memoria para descarga
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df_geocoded.to_excel(writer, index=False, sheet_name='Telemetría Geocodificada')
+                        excel_data = output.getvalue()
+                        
+                        st.success("¡Geocodificación inversa completada con éxito!")
+                        st.download_button(
+                            "📥 Descargar Excel con Ubicaciones",
+                            data=excel_data,
+                            file_name=f"telemetria_ubicaciones_{unit_eval}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                else:
+                    st.error("No se detectó la columna de Ubicación o Coordenadas en el archivo.")
                 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
