@@ -69,10 +69,11 @@ st.markdown("""
         color: white !important;
     }
 
-    /* 🎯 ALINEACIÓN PERFECTA: Elimina el margen inferior predeterminado de Streamlit */
-    div[data-testid="stHorizontalBlock"] div.stButton, 
-    div[data-testid="stHorizontalBlock"] div.stDownloadButton {
-        margin-bottom: 5px !important;
+   /* 🎯 EMPUJAR LOS BOTONES HACIA ABAJO */
+    /* Modifica el valor de 'margin-top' si quieres bajarlos todavía más (ej. 25px o 30px) */
+    div[data-testid="stHorizontalBlock"] > div {
+        margin-top: 15px !important;
+    
     }
 
     /* Tarjetas de métricas */
