@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 ESTILOS CSS PERSONALIZADOS (COLORES Y FONDO)
+# 🎨 ESTILOS CSS PERSONALIZADOS (BOTONES GRANDES)
 # ==========================================
 st.markdown("""
 <style>
@@ -43,20 +43,24 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
     
-    /* Botones principales de Streamlit */
+    /* 🚀 BOTONES MÁS GRANDES Y LLAMATIVOS */
     .stButton>button {
         background-color: #0284c7;
         color: white;
-        border-radius: 6px;
+        border-radius: 8px;
         border: none;
-        font-weight: 600;
-        padding: 0.5rem 1rem;
+        font-weight: 700;
+        font-size: 16px !important;       /* Texto más grande */
+        padding: 0.75rem 1.5rem !important; /* Más altura y ancho interno */
+        width: 100%;                      /* Ocupar todo el ancho de su columna */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
     }
     
     .stButton>button:hover {
         background-color: #0369a1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);      /* Efecto visual al pasar el cursor */
     }
     
     /* Tarjetas de métricas */
@@ -70,7 +74,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.6")
+st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.7")
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 # ==========================================
 # 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA
