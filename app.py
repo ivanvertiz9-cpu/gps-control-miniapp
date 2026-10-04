@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import io
+import requests
+import json
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -9,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web ligera para procesamiento telemático, análisis de paradas (0 km/h), generación de mapas KML y reportes ejecutivos.")
+st.markdown("Plataforma web ligera para procesamiento telemático, análisis de paradas (0 km/h), generación de mapas KML y reportes ejecutivos con enrutamiento OSRM.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV con columnas: Unidad, Evento, Ubicacion, Fecha, Velocidad, Latitud, Longitud)", type=["xlsx", "xls", "csv"])
 
@@ -29,11 +30,9 @@ if uploaded_file is not None:
         total_records = len(df)
         unit_eval = df['Unidad'].iloc[0] if 'Unidad' in df.columns and len(df) > 0 else "N/A"
         
-        vel_col = None
-        for col in df.columns:
-            if 'velocidad' in col.lower() or 'speed' in col.lower():
-                vel_col = col
-                break
+        vel_col = next((c for c in df.columns if 'velocidad' in c.lower() or 'speed' in c.lower()), None)
+        lat_col = next((c for c in df.columns if 'latitud' in c.lower() or 'lat' in c.lower()), None)
+        lon_col = next((c for c in df.columns if 'longitud' in c.lower() or 'lon' in c.lower()), None)
         
         total_stops = 0
         max_vel = 0
@@ -51,24 +50,146 @@ if uploaded_file is not None:
         st.subheader("📊 Vista Previa de Datos Telemáticos")
         st.dataframe(df.head(20), use_container_width=True)
         
-        st.subheader("⚙️ Módulos de Procesamiento y Exportación")
+        st.subheader("⚙️ Módulos de Procesamiento y Exportación OSRM")
         
+        # Función espejo de tu macro VBA para consultar OSRM
+        def obtener_ruta_osrm(dataframe, lat_c, lon_c):
+            coords = []
+            ultima = len(dataframe)
+            paso = max(1, int(ultima / 60)) if ultima > 80 else 1
+            
+            for i in range(0, ultima, paso):
+                row = dataframe.iloc[i]
+                try:
+                    lat = float(row[lat_c])
+                    lon = float(row[lon_c])
+                    # Corrección automática de lat/lon si están invertidos o positivos en México
+                    if lat < 0 and lon > 0:
+                        lat, lon = lon, lat
+                    if lon > 80 and lon < 120:
+                        lon = -lon
+                    if 10 <= lat <= 40 and -130 <= lon <= -70:
+                        coords.append(f"{lon},{lat}")
+                except:
+                    pass
+            
+            if len(coords) < 2:
+                return ""
+            
+            coords_param = ";".join(coords)
+            url = f"http://router.project-osrm.org/route/v1/driving/{coords_param}?overview=full&geometries=geojson"
+            
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    if "routes" in data and len(data["routes"]) > 0:
+                        geometry = data["routes"][0]["geometry"]["coordinates"]
+                        kml_coords = []
+                        for pt in geometry:
+                            cLon, cLat = pt[0], pt[1]
+                            if 10 <= cLat <= 40 and -130 <= cLon <= -70:
+                                kml_coords.append(f"{cLon},{cLat},0")
+                        return " ".join(kml_coords)
+            except:
+                pass
+            
+            # Respaldo de ruta directa si OSRM no responde
+            fallback = []
+            for _, row in dataframe.iterrows():
+                try:
+                    lat = float(row[lat_c])
+                    lon = float(row[lon_c])
+                    if lat < 0 and lon > 0:
+                        lat, lon = lon, lat
+                    if lon > 80 and lon < 120:
+                        lon = -lon
+                    fallback.append(f"{lon},{lat},0")
+                except:
+                    pass
+            return " ".join(fallback)
+
         b1, b2, b3 = st.columns(3)
         
         with b1:
-            if st.button("🌐 Generar KML Completo"):
-                kml_content = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Ruta Completa</name></Document></kml>'
-                st.download_button("📥 Descargar KML Completo", data=kml_content, file_name="ruta_completa.kml", mime="application/vnd.google-earth.kml+xml")
+            if st.button("🌐 Generar KML Completo con Carreteras (OSRM)"):
+                if lat_col and lon_col:
+                    with st.spinner("Conectando con motor de enrutamiento OSRM..."):
+                        coords_str = obtener_ruta_osrm(df, lat_col, lon_col)
+                    
+                    kml_c = f"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Ruta Carretera - Unidad {unit_eval}</name>
+    <Style id="estiloLineaNavegacion">
+      <LineStyle><color>ffFF8800</color><width>5</width></LineStyle>
+    </Style>
+    <Placemark>
+      <name>Trayecto Carretera</name>
+      <styleUrl>#estiloLineaNavegacion</styleUrl>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>{coords_str}</coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>"""
+                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_carretera_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                else:
+                    st.error("Faltan columnas de coordenadas.")
                 
         with b2:
-            if st.button("📍 Generar KML Paradas"):
-                kml_stops = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Paradas de Ruta</name></Document></kml>'
-                st.download_button("📥 Descargar KML Paradas", data=kml_stops, file_name="paradas_ruta.kml", mime="application/vnd.google-earth.kml+xml")
+            if st.button("📍 Generar KML Paradas (0 km/h)"):
+                if lat_col and lon_col and vel_col:
+                    paradas_df = df[df[vel_col] == 0]
+                    placemarks = []
+                    for _, row in paradas_df.iterrows():
+                        try:
+                            lat = float(row[lat_col])
+                            lon = float(row[lon_col])
+                            if lat < 0 and lon > 0:
+                                lat, lon = lon, lat
+                            if lon > 80 and lon < 120:
+                                lon = -lon
+                            evento = row.get('Evento', 'Parada')
+                            fecha = row.get('Fecha', '')
+                            ubicacion = row.get('Ubicacion', '')
+                            placemarks.append(f"""
+    <Placemark>
+      <name>Parada (0 km/h)</name>
+      <description><![CDATA[<b>Unidad:</b> {unit_eval}<br><b>Fecha:</b> {fecha}<br><b>Ubicación:</b> {ubicacion}]]></description>
+      <Point><coordinates>{lon},{lat},0</coordinates></Point>
+    </Placemark>""")
+                        except:
+                            pass
+                    
+                    kml_p = f"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Paradas - Unidad {unit_eval}</name>
+    {''.join(placemarks)}
+  </Document>
+</kml>"""
+                    st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                else:
+                    st.error("Faltan columnas necesarias para paradas.")
                 
         with b3:
             if st.button("📋 Generar Reporte de Control de Ruta (HTML)"):
-                html_report = f"<html><body><h1>Reporte de Control de Ruta - Unidad: {unit_eval}</h1><p>Total Registros: {total_records} | Paradas: {total_stops}</p></body></html>"
-                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name="reporte_control_ruta.html", mime="text/html")
+                html_report = f"""<html>
+<head><meta charset="utf-8"><title>Reporte Control de Ruta</title></head>
+<body style="font-family:Arial; padding:20px;">
+  <h2>Reporte Oficial de Control de Ruta y Telemetría</h2>
+  <hr>
+  <p><b>Unidad Evaluada:</b> {unit_eval}</p>
+  <p><b>Total de Registros Procesados:</b> {total_records}</p>
+  <p><b>Total de Paradas detectadas (0 km/h):</b> {total_stops}</p>
+  <p><b>Velocidad Máxima Registrada:</b> {max_vel} km/h</p>
+  <br>
+  <p><i>Generado automáticamente por Mini-App Enterprise v2.4</i></p>
+</body>
+</html>"""
+                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
                 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
