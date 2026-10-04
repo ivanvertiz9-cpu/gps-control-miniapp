@@ -395,10 +395,11 @@ if uploaded_file is not None:
                         total_filas = len(df)
                         
                         df_geocoded = df.copy()
+                        # Blindaje clave: Convertir la columna completa a tipo string para evitar conflictos de tipos de datos
+                        df_geocoded[ubicacion_col] = df_geocoded[ubicacion_col].astype(str)
                         
                         for idx, row in df_geocoded.iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
-                            # Validación amplia de coordenadas de México/Norteamérica
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
                                 url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=18&addressdetails=1"
                                 headers = {"User-Agent": "MiniAppEnterprise_GPS_Tool_v2"}
@@ -414,7 +415,6 @@ if uploaded_file is not None:
                                 except:
                                     df_geocoded.at[idx, ubicacion_col] = "Error de conexión"
                                 
-                                # Pausa obligatoria de 1 segundo para cumplir con la política de uso libre de OpenStreetMap
                                 time.sleep(1.0)
                             else:
                                 df_geocoded.at[idx, ubicacion_col] = "Coordenada fuera de rango"
