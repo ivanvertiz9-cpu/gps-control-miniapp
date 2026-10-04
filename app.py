@@ -8,14 +8,13 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con motor de enrutamiento OSRM y marcadores telemáticos por velocidad.")
+st.title("🛰️️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
+st.markdown("Plataforma web con corrección automática de coordenadas y marcadores telemáticos.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
     try:
-        # Analizar filas para encontrar encabezados automáticamente
         if uploaded_file.name.endswith('.csv'):
             df_raw = pd.read_csv(uploaded_file, header=None)
         else:
@@ -35,7 +34,6 @@ if uploaded_file is not None:
         
         df.columns = [str(c).strip() for c in df.columns]
         
-        # Detección flexible de columnas
         unidad_col = next((c for c in df.columns if 'unidad' in c.lower()), df.columns[0] if len(df.columns) > 0 else None)
         evento_col = next((c for c in df.columns if 'evento' in c.lower()), df.columns[1] if len(df.columns) > 1 else None)
         ubicacion_col = next((c for c in df.columns if 'ubicacion' in c.lower() or 'ubicación' in c.lower()), df.columns[2] if len(df.columns) > 2 else None)
@@ -66,37 +64,44 @@ if uploaded_file is not None:
         
         st.subheader("⚙️ Módulos de Procesamiento y Exportación KML")
         
-        def limpiar_coord(val):
+        def procesar_lat_lon(raw_lat, raw_lon):
             try:
-                s = str(val).strip().replace(',', '.')
-                f = float(s)
-                if f > 0 and f < 130: 
-                    f = -f
-                return f
+                lat = float(str(raw_lat).strip().replace(',', '.'))
+                lon = float(str(raw_lon).strip().replace(',', '.'))
+                
+                # Si vienen invertidas (latitud con valores de longitud y viceversa)
+                if abs(lat) > 50 and abs(lon) < 50:
+                    lat, lon = lon, lat
+                
+                # En México la longitud debe ser estrictamente negativa
+                if lon > 0:
+                    lon = -lon
+                    
+                return lat, lon
             except:
-                return 0.0
+                return 0.0, 0.0
 
-        # Función idéntica a tu VBA para consultar OSRM en fragmentos seguros
-        def obtener_ruta_osrm_robusta(dataframe, lat_c, lon_c):
+        def obtener_ruta_osrm_segura(dataframe, lat_c, lon_c):
             coords = []
             ultima = len(dataframe)
-            paso = max(1, int(ultima / 50)) if ultima > 60 else 1
+            paso = max(1, int(ultima / 40)) if ultima > 50 else 1
             
             for i in range(0, ultima, paso):
                 row = dataframe.iloc[i]
-                lat = limpiar_coord(row[lat_c])
-                lon = limpiar_coord(row[lon_c])
-                
-                # Ajuste lat/lon si vienen invertidas
-                if lat < 0 and lon > 0:
-                    lat, lon = lon, lat
+                lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
                 if 14 <= lat <= 33 and -118 <= lon <= -85:
                     coords.append(f"{lon},{lat}")
             
             if len(coords) < 2:
-                return ""
+                # Respaldo total si OSRM no procesa el lote
+                fallback = []
+                for _, row in dataframe.iterrows():
+                    lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
+                    if lat != 0 and lon != 0:
+                        fallback.append(f"{lon},{lat},0")
+                return " ".join(fallback)
             
-            coords_param = ";".join(coords[:60]) # OSRM soporta lotes seguros
+            coords_param = ";".join(coords[:50])
             url = f"http://router.project-osrm.org/route/v1/driving/{coords_param}?overview=full&geometries=geojson"
             
             try:
@@ -107,17 +112,15 @@ if uploaded_file is not None:
                         geometry = data["routes"][0]["geometry"]["coordinates"]
                         kml_coords = []
                         for pt in geometry:
-                            cLon, cLat = pt[0], pt[1]
-                            kml_coords.append(f"{cLon},{cLat},0")
+                            kml_coords.append(f"{pt[0]},{pt[1]},0")
                         return " ".join(kml_coords)
             except:
                 pass
             
-            # Respaldo directo ordenado si OSRM saturara
+            # Respaldo por puntos directos ordenados
             fallback = []
             for _, row in dataframe.iterrows():
-                lat = limpiar_coord(row[lat_c])
-                lon = limpiar_coord(row[lon_c])
+                lat, lon = procesar_lat_lon(row[lat_c], row[lon_c])
                 if lat != 0 and lon != 0:
                     fallback.append(f"{lon},{lat},0")
             return " ".join(fallback)
@@ -127,21 +130,18 @@ if uploaded_file is not None:
         with b1:
             if st.button("🌐 Generar KML Completo con Carreteras y Pines"):
                 if lat_col and lon_col:
-                    with st.spinner("Trazando ruta sobre carreteras y generando pines..."):
-                        coords_str = obtener_ruta_osrm_robusta(df, lat_col, lon_col)
+                    with st.spinner("Procesando ruta terrestre y pines..."):
+                        coords_str = obtener_ruta_osrm_segura(df, lat_col, lon_col)
                         
-                        # Generar pines individuales con colores corporativos por velocidad
                         placemarks_pines = []
                         for _, row in df.iterrows():
-                            lat = limpiar_coord(row[lat_col])
-                            lon = limpiar_coord(row[lon_col])
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             if lat != 0 and lon != 0:
                                 vel = float(row[vel_col]) if vel_col else 0
                                 ev = row[evento_col] if evento_col in df.columns else 'Reporte'
                                 fec = row[fecha_col] if fecha_col in df.columns else ''
                                 ubi = row[ubicacion_col] if ubicacion_col in df.columns else ''
                                 
-                                # Estilos basados en tu VBA original
                                 if vel == 0:
                                     estilo = "#pinRojo"
                                 elif vel <= 40:
@@ -185,8 +185,7 @@ if uploaded_file is not None:
                     paradas_df = df[df[vel_col] == 0]
                     placemarks = []
                     for _, row in paradas_df.iterrows():
-                        lat = limpiar_coord(row[lat_col])
-                        lon = limpiar_coord(row[lon_col])
+                        lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                         if lat != 0 and lon != 0:
                             ev = row[evento_col] if evento_col in df.columns else 'Parada'
                             fec = row[fecha_col] if fecha_col in df.columns else ''
@@ -224,7 +223,7 @@ if uploaded_file is not None:
   <p><i>Generado automáticamente por Mini-App Enterprise v2.4</i></p>
 </body>
 </html>"""
-                st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
+                    st.download_button("📥 Descargar Reporte HTML", data=html_report, file_name=f"reporte_{unit_eval}.html", mime="text/html")
                 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {e}")
