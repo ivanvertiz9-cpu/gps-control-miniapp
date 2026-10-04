@@ -319,7 +319,7 @@ if uploaded_file is not None:
         
         st.divider()
         st.subheader("📊 Vista Previa de Datos Telemáticos")
-        st.dataframe(df.head(20), use_container_width=True)
+        st.dataframe(df, use_container_width=True)
         
         st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / HTML")
         
