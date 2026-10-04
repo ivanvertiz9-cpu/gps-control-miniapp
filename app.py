@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import requests
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
@@ -9,33 +8,46 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web ligera para procesamiento telemático, análisis de paradas (0 km/h), generación de mapas KML y reportes ejecutivos.")
+st.markdown("Plataforma web ligera con escaneo inteligente de encabezados telemáticos.")
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
     try:
+        # Cargar archivo bruto sin filas fijas para analizar las primeras líneas
         if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+            df_raw = pd.read_csv(uploaded_file, header=None)
         else:
-            df = pd.read_excel(uploaded_file, skiprows=4)
+            df_raw = pd.read_excel(uploaded_file, header=None)
         
+        # Escaneo inteligente: buscar la fila que contenga los encabezados clave ("Unidad" y "Latitud" o "Velocidad")
+        header_row_idx = 0
+        for idx, row in df_raw.iterrows():
+            row_str = " ".join([str(val).lower() for val in row.values])
+            if ('unidad' in row_str or 'vehicle' in row_str) and ('lat' in row_str or 'velocidad' in row_str):
+                header_row_idx = idx
+                break
+        
+        # Recargar el archivo asignando correctamente la fila de encabezados encontrada
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file, skiprows=header_row_idx)
+        else:
+            df = pd.read_excel(uploaded_file, header=header_row_idx)
+        
+        # Limpiar espacios en los nombres de las columnas
         df.columns = [str(c).strip() for c in df.columns]
         
-        # Detección flexible de columnas
-        unidad_col = next((c for c in df.columns if 'unidad' in c.lower()), df.columns[0])
-        vel_col = next((c for c in df.columns if 'velocidad' in c.lower() or 'speed' in c.lower()), None)
+        # Detección flexible por nombre de columna
+        unidad_col = next((c for c in df.columns if 'unidad' in c.lower()), df.columns[0] if len(df.columns) > 0 else None)
+        evento_col = next((c for c in df.columns if 'evento' in c.lower()), df.columns[1] if len(df.columns) > 1 else None)
+        ubicacion_col = next((c for c in df.columns if 'ubicacion' in c.lower() or 'ubicación' in c.lower()), df.columns[2] if len(df.columns) > 2 else None)
+        fecha_col = next((c for c in df.columns if 'fecha' in c.lower()), df.columns[3] if len(df.columns) > 3 else None)
+        vel_col = next((c for c in df.columns if 'velocidad' in c.lower() or 'speed' in c.lower()), df.columns[4] if len(df.columns) > 4 else None)
+        lat_col = next((c for c in df.columns if 'latitud' in c.lower() or 'lat' in c.lower()), df.columns[5] if len(df.columns) > 5 else None)
+        lon_col = next((c for c in df.columns if 'longitud' in c.lower() or 'lon' in c.lower() or 'long' in c.lower()), df.columns[6] if len(df.columns) > 6 else None)
         
-        lat_col = next((c for c in df.columns if 'lat' in c.lower()), None)
-        lon_col = next((c for c in df.columns if 'lon' in c.lower() or 'long' in c.lower()), None)
-        
-        if not lat_col and len(df.columns) > 5:
-            lat_col = df.columns[5]
-        if not lon_col and len(df.columns) > 6:
-            lon_col = df.columns[6]
-            
         total_records = len(df)
-        unit_eval = df[unidad_col].iloc[0] if unidad_col in df.columns and len(df) > 0 else "N/A"
+        unit_eval = df[unidad_col].iloc[0] if unidad_col and len(df) > 0 else "N/A"
         
         total_stops = 0
         max_vel = 0
@@ -56,7 +68,6 @@ if uploaded_file is not None:
         
         st.subheader("⚙️ Módulos de Procesamiento y Exportación KML")
         
-        # Función auxiliar ultrarrobusta para limpiar y convertir coordenadas
         def limpiar_coord(val):
             try:
                 s = str(val).strip().replace(',', '.')
@@ -74,26 +85,14 @@ if uploaded_file is not None:
                 lat = limpiar_coord(row[lat_c])
                 lon = limpiar_coord(row[lon_c])
                 
-                # Corrección automática si están invertidas
                 if lat < 0 and lon > 0:
                     lat, lon = lon, lat
                 if lon > 80 and lon < 120:
                     lon = -lon
                 
-                # Validación para México
-                if 14 <= lat <= 33 and -118 <= lon <= -85:
+                if lat != 0 and lon != 0:
                     puntos_validos.append(f"{lon},{lat},0")
             
-            if len(puntos_validos) < 2:
-                # Segundo intento sin restricciones estrictas de rango si falló el filtro
-                for _, row in dataframe.iterrows():
-                    lat = limpiar_coord(row[lat_c])
-                    lon = limpiar_coord(row[lon_c])
-                    if lat != 0 and lon != 0:
-                        if lon > 0 and lon < 130: 
-                            lon = -lon
-                        puntos_validos.append(f"{lon},{lat},0")
-                        
             return " ".join(puntos_validos)
 
         b1, b2, b3 = st.columns(3)
@@ -122,7 +121,7 @@ if uploaded_file is not None:
 </kml>"""
                     st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("No se detectaron columnas de coordenadas.")
+                    st.error("No se pudieron determinar las columnas de coordenadas.")
                 
         with b2:
             if st.button("📍 Generar KML Paradas (0 km/h)"):
@@ -135,13 +134,13 @@ if uploaded_file is not None:
                         if lat != 0 and lon != 0:
                             if lon > 0 and lon < 130: 
                                 lon = -lon
-                            evento = row.get('Evento', 'Parada')
-                            fecha = row.get('Fecha', '')
-                            ubicacion = row.get('Ubicacion', '')
+                            evento = row[evento_col] if evento_col in df.columns else 'Parada'
+                            fecha = row[fecha_col] if fecha_col in df.columns else ''
+                            ubicacion = row[ubicacion_col] if ubicacion_col in df.columns else ''
                             placemarks.append(f"""
     <Placemark>
       <name>Parada (0 km/h)</name>
-      <description><![CDATA[<b>Unidad:</b> {unit_eval}<br><b>Fecha:</b> {fecha}<br><b>Ubicación:</b> {ubicacion}]]></description>
+      <description><![CDATA[<b>Unidad:</b> {unit_eval}<br><b>Evento:</b> {evento}<br><b>Fecha:</b> {fecha}<br><b>Ubicación:</b> {ubicacion}]]></description>
       <Point><coordinates>{lon},{lat},0</coordinates></Point>
     </Placemark>""")
                     
@@ -154,7 +153,7 @@ if uploaded_file is not None:
 </kml>"""
                     st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas necesarias para paradas.")
+                    st.error("Faltan columnas necesarias para procesar las paradas.")
                 
         with b3:
             if st.button("📋 Generar Reporte de Control de Ruta (HTML)"):
