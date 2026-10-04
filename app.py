@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 ESTILOS CSS CORREGIDOS (BOTONES GRANDES Y FUENTE)
+# 🎨 ESTILOS CSS CON ALINEACIÓN PERFECTA
 # ==========================================
 st.markdown("""
 <style>
@@ -50,9 +50,9 @@ st.markdown("""
         border-radius: 10px !important;
         border: none !important;
         font-weight: 700 !important;
-        font-size: 18px !important;       /* Texto grande y claro */
-        padding: 1rem 1.5rem !important;  /* Altura y relleno amplios */
-        width: 100% !important;           /* Ocupar toda la columna */
+        font-size: 18px !important;       
+        padding: 1rem 1.5rem !important;  
+        width: 100% !important;           
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15) !important;
         transition: all 0.3s ease !important;
     }
@@ -63,11 +63,16 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* Forzar tamaño de texto interno del botón en Streamlit */
     div.stButton > button p, div.stDownloadButton > button p {
         font-size: 18px !important;
         font-weight: 700 !important;
         color: white !important;
+    }
+
+    /* 🎯 ALINEACIÓN PERFECTA: Elimina el margen inferior predeterminado de Streamlit */
+    div[data-testid="stHorizontalBlock"] div.stButton, 
+    div[data-testid="stHorizontalBlock"] div.stDownloadButton {
+        margin-bottom: -15px !important;
     }
 
     /* Tarjetas de métricas */
