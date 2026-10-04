@@ -390,37 +390,37 @@ if uploaded_file is not None:
         with b3:
             if st.button("🔍 Extraer Ubicaciones (Nominatim)"):
                 if lat_col and lon_col and ubicacion_col:
-                    with st.spinner("Consultando direcciones en OpenStreetMap... (Esto puede tomar unos segundos por respeto a la API)"):
+                    with st.spinner("Consultando direcciones en OpenStreetMap renglón por renglón..."):
                         progress_bar = st.progress(0)
                         total_filas = len(df)
                         
-                        # Copiar df para modificar ubicaciones vacías
                         df_geocoded = df.copy()
                         
                         for idx, row in df_geocoded.iterrows():
-                            current_ubi = str(row[ubicacion_col]).strip()
-                            if current_ubi == "" or current_ubi.lower() == "nan":
-                                lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
-                                if 14 <= lat <= 33 and -118 <= lon <= -85:
-                                    url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=18&addressdetails=1"
-                                    headers = {"User-Agent": "MiniAppEnterprise_GPS_Tool"}
-                                    try:
-                                        res = requests.get(url, headers=headers, timeout=5)
-                                        if res.status_code == 200:
-                                            data = res.json()
-                                            display_name = data.get("display_name", "")
-                                            if display_name:
-                                                df_geocoded.at[idx, ubicacion_col] = display_name
-                                            else:
-                                                df_geocoded.at[idx, ubicacion_col] = "Ubicación no encontrada"
-                                    except:
-                                        pass
-                                    # Pausa obligatoria de 1 segundo para respetar políticas de OpenStreetMap
-                                    time.sleep(1.0)
+                            lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
+                            # Validación amplia de coordenadas de México/Norteamérica
+                            if 10 <= lat <= 35 and -120 <= lon <= -80:
+                                url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=18&addressdetails=1"
+                                headers = {"User-Agent": "MiniAppEnterprise_GPS_Tool_v2"}
+                                try:
+                                    res = requests.get(url, headers=headers, timeout=5)
+                                    if res.status_code == 200:
+                                        data = res.json()
+                                        display_name = data.get("display_name", "")
+                                        if display_name:
+                                            df_geocoded.at[idx, ubicacion_col] = display_name
+                                        else:
+                                            df_geocoded.at[idx, ubicacion_col] = "Ubicación no encontrada"
+                                except:
+                                    df_geocoded.at[idx, ubicacion_col] = "Error de conexión"
+                                
+                                # Pausa obligatoria de 1 segundo para cumplir con la política de uso libre de OpenStreetMap
+                                time.sleep(1.0)
+                            else:
+                                df_geocoded.at[idx, ubicacion_col] = "Coordenada fuera de rango"
                             
                             progress_bar.progress(min(1.0, (idx + 1) / total_filas))
                         
-                        # Generar archivo Excel en memoria para descarga
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df_geocoded.to_excel(writer, index=False, sheet_name='Telemetría Geocodificada')
