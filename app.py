@@ -12,7 +12,129 @@ st.set_page_config(
 )
 
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.4")
-st.markdown("Plataforma web con enrutamiento OSRM, geocodificación y bitácora de control de ruta (Orígenes, Paradas y Destino).")
+st.markdown("Plataforma web con detección automática de casetas, enrutamiento OSRM y marcadores telemáticos.")
+
+# Base de datos integrada de Casetas (Nombre, Latitud, Longitud)
+CASETAS_DB = [
+    ("Esperanza", 18.870777, -97.385869), ("Amozoc II", 19.063585, -98.069075), ("Cantona", 19.507568, -97.497774),
+    ("Cantona A1", 19.506554, -97.495453), ("Cantona A2", 19.509866, -97.497172), ("Cuapiaxtla", 19.310368, -97.797562),
+    ("Cuapiaxtla A1", 19.304147, -97.805436), ("Cuapiaxtla A2", 19.304378, -97.805668), ("Perote", 19.55172, -97.289536),
+    ("Cuyutlán", 18.927786, -104.081504), ("Arriaga", 16.245558, -93.880876), ("Jiquipilas", 16.620564, -93.60209),
+    ("Ocozocuautla", 16.738493, -93.400414), ("Tierra y Libertad", 16.368058, -93.867043), ("Contepec", 19.876127, -100.177072),
+    ("Contepec A1", 19.877644, -100.176358), ("Contepec A2", 19.875531, -100.176711), ("San Juanico", 19.830719, -99.905209),
+    ("General Bravo", 25.813509, -99.169588), ("Los Herreras", 25.757295, -99.373856), ("Los Herreras", 25.759393, -99.37416),
+    ("Los Ramones", 25.656016, -99.631035), ("Los Ramones", 25.662886, -99.628599), ("Altavista", 27.730842, -105.197882),
+    ("Saucillo", 28.04638, -105.329342), ("La Antigua", 19.320385, -96.310715), ("San Julián", 23.293276, -96.257899),
+    ("Zacatecas", 22.710779, -102.448879), ("Fortín", 18.907151, -96.999524), ("Fortín Aux.", 18.906565, -97.001589),
+    ("San Mateo A1", 19.487334, -99.309881), ("San Mateo A2", 19.486228, -99.311503), ("San Mateo A3", 19.487093, -99.310115),
+    ("San Mateo A4", 19.48819, -99.311068), ("Lomas Verdes", 19.519198, -99.286355), ("Madín A1", 19.544632, -99.277049),
+    ("Madín A2", 19.545601, -99.277405), ("Madín A3", 19.548062, -99.276966), ("Madín A4", 19.548788, -99.277298),
+    ("Atizapán", 19.582535, -99.271137), ("Lago de Guadalupe A.", 19.608832, -99.237113), ("Lago de Guadalupe A2", 19.6096, -99.236474),
+    ("Seybaplaya", 19.636259, -90.671564), ("Compostela", 21.229472, -104.887417), ("Cuitláhuac", 18.839454, -96.746941),
+    ("Cuitláhuac A1", 18.839314, -96.746978), ("Cuitláhuac A1-2", 18.839604, -96.746905), ("Cuitláhuac A2-1", 18.837511, -96.737458),
+    ("Cuitláhuac A2-2", 18.83865, -96.739512), ("Paso del Toro", 19.081747, -96.198438), ("Huitzo", 17.275026, -96.915277),
+    ("Huitzo A1", 17.278761, -96.914652), ("Miahuatlán", 18.264673, -97.315627), ("Coxtlahuaca A1", 17.726023, -97.353773),
+    ("Coxtlahuaca A2", 17.725859, -97.352916), ("Tehuacán", 18.487127, -97.456212), ("Aeropuerto A1", 18.802293, -99.221241),
+    ("Aeropuerto A2", 18.802741, -99.219852), ("Alpuyeca", 18.69853, -99.278053), ("Alpuyeca A1", 18.737779, -99.260215),
+    ("Alpuyeca A2", 18.722419, -99.259948), ("D.I.E.Z.", 18.8375, -99.21537), ("La Venta", 16.928256, -99.801892),
+    ("Palo Blanco", 17.423967, -99.466861), ("Paso Morelos", 18.231465, -99.215466), ("Xochitepec", 17.774978, -99.225314),
+    ("Garavitos", 24.004477, -104.736419), ("Llano Grande", 23.868815, -105.203958), ("Mesillas", 23.259302, -106.049587),
+    ("Durango", 24.131735, -104.534058), ("Yerbanís", 24.730769, -103.861923), ("Ecatepec", 19.611707, -99.025732),
+    ("La Rumorosa", 32.562633, -116.047931), ("La Rumorosa 2", 32.555877, -116.036431), ("Villa Ahumada", 30.437079, -106.52185),
+    ("Ensenada", 31.903121, -116.732727), ("Playas de Tijuana", 32.514036, -117.109538), ("Rosarito", 32.32425, -117.409016),
+    ("Sánchez Magallanes", 18.030565, -93.812954), ("Sánchez Magallanes", 18.029932, -93.813072), ("Sánchez Magallanes", 18.031623, -93.813693),
+    ("Asunción", 20.147427, -98.285747), ("Asunción A1", 20.146458, -98.286939), ("Asunción A2", 20.150099, -98.286642),
+    ("Esperanza", 27.603722, -109.93909), ("Fundición", 27.320373, -109.719802), ("Guaymas", 28.036494, -110.924164),
+    ("Hermosillo", 29.220733, -110.930184), ("La Jaula", 26.849818, -109.373311), ("Magdalena", 30.629274, -110.948775),
+    ("Bermejillo", 25.923655, -103.622077), ("Ceballos", 26.586694, -104.057726), ("Acatlán", 20.415926, -103.55704),
+    ("San Marcos", 19.433636, -103.49487), ("Arenal", 20.778748, -103.662386), ("Plan de Barrancas", 21.005379, -104.144084),
+    ("Santa María del Oro", 21.328268, -104.644406), ("Santa María A1", 21.327973, -104.663151), ("Santa María A2", 21.327052, -104.664677),
+    ("Tequepexpan A1", 21.213906, -104.592673), ("Tequepexpan A2", 21.213664, -104.594174), ("Tequila", 20.854129, -103.861211),
+    ("La Joya", 20.604788, -103.138943), ("Cazones1", 20.469874, -97.254669), ("Totomoxtle 1", 20.461964, -97.245995),
+    ("Totomoxtle 2", 20.460995, -97.247746), ("Jiménez", 27.244991, -104.933224), ("Oacalco", 18.931121, -99.02562),
+    ("Tepoztlán", 18.98681, -99.112444), ("Acayucan", 17.910035, -94.937359), ("Cosamaloapan", 18.334975, -95.822252),
+    ("Las Choapas", 17.944819, -94.172372), ("Las Choapas A1", 17.942707, -94.17224), ("Malpasito", 17.349101, -93.586411),
+    ("Malpasito A1", 17.348467, -93.586933), ("Malpasito A2", 17.349152, -93.585518), ("Ocuilapa", 16.863172, -93.40687),
+    ("Cuerámaro A1", 21.06969, -101.679198), ("Cuerámaro A2", 21.069085, -101.679401), ("Encarnación", 21.489618, -102.242304),
+    ("León", 21.102736, -101.784601), ("San Francisco A1", 21.082341, -101.745577), ("San Francisco A2", 21.081411, -101.745975),
+    ("San Pedro", 24.748965, -107.568618), ("Morín Chávez", 23.177959, -102.828733), ("Arandas", 20.737502, -101.379985),
+    ("Arandas A1", 20.735284, -101.383209), ("Arandas A2", 20.73461, -101.381244), ("San Cristóbal", 20.601075, -101.438521),
+    ("La Calera", 20.397139, -101.998746), ("La Calera Aux.", 20.395404, -101.998207), ("Matehuala", 23.664163, -100.607299),
+    ("Matehuala A1", 23.664161, -100.606222), ("Matehuala A2", 23.663767, -100.608339), ("Mexicali A1", 32.533552, -115.40878),
+    ("Nogales", 31.258312, -110.974723), ("Tecpan", 17.197011, -100.626768), ("Calera", 22.941811, -102.689998),
+    ("Chichequillas", 20.705555, -100.343716), ("Atlacomulco II", 19.911815, -99.85251), ("Acambay", 19.223377, -99.844213),
+    ("Jilotepec", 19.976547, -99.53149), ("Querétaro 1", 19.998688, -99.487671), ("Querétaro 2", 19.996155, -99.499495),
+    ("Querétaro 3", 19.997821, -99.492), ("Querétaro 4", 20.000504, -99.489956), ("Tula II-1", 20.071871, -99.367698),
+    ("Tula II-2", 20.070355, -99.368243), ("Tula II-3", 20.072661, -99.369804), ("Tula II-4", 20.071311, -99.368713),
+    ("Tula I-1", 20.099725, -99.280562), ("Tula I-2", 20.098169, -99.283149), ("Tula I-3", 20.09821, -99.286059),
+    ("Tula I-4", 20.100076, -99.28351), ("Atitalaquia 1", 20.067268, -99.218551), ("Atitalaquia 2", 20.064868, -99.219068),
+    ("Ajoloapan 1", 19.956086, -99.053339), ("Ajoloapan 2", 19.955443, -99.052776), ("Ajoloapan 3", 19.955648, -99.055422),
+    ("Ajoloapan 4", 19.955638, -99.05548), ("Pachuca", 19.927508, -98.891452), ("Tulancingo 1", 19.834861, -98.700138),
+    ("Tulancingo 2", 19.83368, -98.698801), ("Tulancingo 3", 19.832456, -98.700121), ("Tulancingo 4", 19.83364, -98.701536),
+    ("Cd. Sahagún 1", 19.756661, -98.628326), ("Cd. Sahagún 2", 19.75596, -98.628121), ("Cd. Sahagún 3", 19.755427, -98.62949),
+    ("Cd. Sahagún 4", 19.756069, -98.630532), ("Calpulalpan 1", 19.62148, -98.547093), ("Calpulalpan 2", 19.62015, -98.547003),
+    ("Calpulalpan 3", 19.619189, -98.54942), ("Calpulalpan 4", 19.619447, -98.54967), ("Sanctorum 1", 19.515572, -98.469019),
+    ("Sanctorum 2", 19.512699, -98.469606), ("Sanctorum 3", 19.512702, -98.468831), ("Sanctorum 4", 19.513876, -98.466906),
+    ("Sanctorum 5", 19.518652, -98.471763), ("Texmelucan", 19.301795, -98.409616), ("La Carbonera", 25.510976, -100.868373),
+    ("San Nicolás de los Jas", 22.129759, -100.825106), ("Loma Real", 22.276443, -97.893343), ("Tampico", 22.275332, -97.893427),
+    ("Ecuandureo", 20.17505, -102.191319), ("Huaniqueo A1", 19.884267, -101.510489), ("Huaniqueo A2", 19.882534, -101.511604),
+    ("Jeráhuaro A1", 19.894416, -100.646701), ("Jeráhuaro A2", 19.893593, -100.651203), ("Ocotlán", 20.40586, -102.73889),
+    ("Ocotlán A1", 20.406969, -102.738906), ("Ocotlán A2", 20.404903, -102.739378), ("Panindícuaro", 19.972189, -101.756945),
+    ("Vista Hermosa A1", 20.269788, -102.43991), ("Vista Hermosa A2", 20.269344, -102.441826), ("Zinapécuaro", 19.901776, -100.788521),
+    ("Zinapécuaro A1", 19.902373, -100.787561), ("Zinapécuaro A2", 19.900892, -100.789019), ("Costa Rica", 24.570288, -107.430223),
+    ("Mármol", 23.471208, -106.569542), ("Quilá A1", 24.397637, -107.269976), ("Quilá A2", 24.396624, -107.271899),
+    ("Pisté", 20.728862, -88.583181), ("Xcan", 20.87692, -87.63614), ("Tlalpan", 19.241915, -99.418321),
+    ("Tres Marías A1", 19.050851, -99.241365), ("Tres Marías A2", 19.056209, -99.241097), ("Contadero 1", 19.333688, -99.313794),
+    ("Contadero 2", 19.331793, -99.31516), ("La Venta", 19.332852, -99.314303), ("Santa Fe", 19.363385, -99.26732),
+    ("Ojo de Agua", 19.618814, -99.029522), ("San Cristóbal", 19.602763, -99.038148), ("Chalco", 19.292034, -98.88175),
+    ("San Marcos", 19.296387, -98.870735), ("San Martín", 19.241121, -98.385855), ("Jorobas A1", 19.826191, -99.250048),
+    ("Jorobas A2", 19.825708, -99.250155), ("Palmillas", 20.296108, -99.929058), ("Polotitlán A1", 20.22643, -99.810686),
+    ("Polotitlán A2", 20.225308, -99.810547), ("Tepotzotlán", 19.715364, -99.207569), ("Aguascalientes A1", 26.340266, -100.070469),
+    ("Aguascalientes A2", 26.341505, -100.071739), ("Sabinas", 26.512104, -100.007159), ("Sabinas A1", 26.508381, -100.008192),
+    ("Vallecillos", 26.642361, -99.942202), ("Playa 1 A1", 25.456853, -101.063694), ("Playa 1 A2", 25.457025, -101.063828),
+    ("Playa 1 P", 25.44846, -101.064506), ("Playa 2 A1", 25.615722, -100.908414), ("Playa 2 A2", 25.616308, -100.908432),
+    ("Playa 2 P", 25.612236, -100.913526), ("Playa 3 A1", 25.696264, -100.57736), ("La Cinta", 20.073484, -101.13663),
+    ("Cuitzeo A1", 19.968867, -101.159727), ("Cuitzeo A2", 19.968282, -101.162062), ("Uriangato", 20.182921, -101.151187),
+    ("Valle de Santiago", 20.372552, -101.147354), ("Valtierrilla", 20.542645, -101.377717), ("Valtierrilla A1", 20.553053, -101.136236),
+    ("Valtierrilla A2", 20.553134, -101.136428), ("Feliciano", 18.006497, -101.961761), ("Feliciano A1", 18.004663, -101.9639),
+    ("Feliciano A2", 18.004082, -101.961901), ("Las Cañas", 18.554181, -101.970317), ("Las Cañas A1", 18.553567, -101.972961),
+    ("Zirahuén", 19.505606, -101.659297), ("Zirahuén A", 19.482235, -101.730717), ("Zurumucapio", 19.441166, -101.882235),
+    ("Peñón", 19.468849, -99.004418), ("Texcoco", 19.502896, -98.912747), ("Las Vigas", 19.627722, -97.153089),
+    ("Miradores", 19.472105, -96.772824), ("Amozoc", 19.049787, -98.032313), ("Alvarado", 18.769878, -95.744556),
+    ("Cadereyta", 20.561059, -100.05737), ("Camargo", 26.362441, -98.806402), ("Caracol", 18.133114, -96.136671),
+    ("Cd. Acuña", 29.325454, -100.928793), ("Coatzacoalcos", 18.115156, -94.410884), ("San Luis Río Colorado", 32.491685, -114.808756),
+    ("Culiacán", 24.948879, -107.545718), ("Iguala", 18.33621, -99.508327), ("Dovalí", 18.013379, -94.396777),
+    ("Dovalí Bis", 18.014055, -94.443264), ("El Zacatal", 18.61286, -91.860817), ("Juárez Lincoln", 27.498254, -99.502409),
+    ("La Piedad", 20.352787, -102.025175), ("Isla Aguada", 18.785548, -91.494874), ("Laredo I", 27.49856, -99.507378),
+    ("Las Flores", 26.060544, -97.50416), ("Libre Comercio", 26.021585, -97.738817), ("Los Tomates", 25.874233, -97.474692),
+    ("Matamoros", 25.891382, -97.503914), ("Miguel Alemán", 26.402916, -99.020661), ("Nautla", 20.210215, -96.778734),
+    ("Nuevo Laredo III", 27.595071, -99.514337), ("Ojinaga", 29.561043, -104.397206), ("Papaloapan", 18.159598, -96.096688),
+    ("Paso del Norte", 31.745887, -106.486418), ("Pánuco", 22.148794, -98.144897), ("Piedras Negras", 28.705234, -100.512987),
+    ("Piedras Negras II", 28.697047, -100.512395), ("Reynosa", 26.093215, -98.270947), ("Reynosa - Pharr", 26.041812, -98.20886),
+    ("Rodolfo Robles", 14.677057, -92.149701), ("San Juan", 26.311873, -98.841957), ("San Miguel", 25.976312, -109.033558),
+    ("Sinaloa", 25.512842, -108.347578), ("Solidaridad", 27.697345, -99.747804), ("Suchiate II", 14.702181, -92.151404),
+    ("Tampico", 22.218325, -97.824741), ("Tecolutla", 20.437802, -97.086444), ("Tlacotalpan", 18.704609, -95.641325),
+    ("Usumacinta", 17.859877, -91.783643), ("Zaragoza", 31.670895, -106.34067), ("Los Chorros", 25.186754, -100.731938),
+    ("Huachichil", 25.24548, -100.801484), ("Cerro Gordo", 20.591875, -101.137274), ("Querétaro", 20.525718, -100.472837),
+    ("Salamanca", 20.598452, -100.180914), ("Salamanca A1", 20.599141, -101.180695), ("Salamanca A2", 20.597586, -101.181031),
+    ("Salamanca A3", 20.590023, -101.136035), ("Villagrán A1", 20.582207, -100.992157), ("Villagrán A2", 20.579417, -100.99235),
+    ("Taxo", 18.588623, -99.559597), ("Nuevo Progreso A2", 26.037152, -97.954566), ("Nuevo Progreso P1", 26.036267, -97.954442),
+    ("Rayón", 21.864264, -96.618995), ("El Hongo", 32.521819, -116.319985), ("El Hongo A1", 32.521141, -116.163914),
+    ("El Hongo A2", 32.522047, -116.31983), ("Ixtepec A1", 16.561071, -95.134966), ("Ixtepec A2", 16.561481, -95.134292),
+    ("Ixtepec A3", 16.561823, -95.136055), ("Ixtepec", 16.561154, -95.135615), ("Tehuantepec", 16.162139, -94.804051),
+    ("San José del Cabo", 23.04992, -109.719559), ("Acapulco", 19.301587, -98.404051), ("Santa Ana", 30.58679, -111.284143),
+    ("Esperanza", 32.525485, -116.690261), ("Tecate", 32.54579, -116.690261), ("Nuevo Necaxa", 20.183843, -97.992761),
+    ("Acaponeta A1", 22.453835, -105.424726), ("Acaponeta A2", 22.454088, -105.418817), ("Rosario A1", 22.984707, -105.878039),
+    ("Rosario A2", 22.985107, -105.875277), ("Ruíz A1", 21.953097, -105.12077), ("Ruíz A2", 21.951811, -110.116064),
+    ("Trapichillo", 21.571769, -104.987465), ("Yago A1", 21.844631, -105.084918), ("Yago A2", 21.845203, -105.056015),
+    ("La Cuchilla", 25.627001, -102.878215), ("Plan de Ayala", 25.444123, -101.303947), ("Chiapas de Corzo", 16.730618, -93.0095),
+    ("Santa Casilda", 19.152932, -101.97813), ("Santa Casilda A1", 19.156446, -101.976093), ("Taretán", 19.355443, -101.917902),
+    ("Taretán A1", 19.351874, -101.917902), ("Cuencamé III", 24.981671, -103.73525), ("Cuencamé III A2", 24.980948, -103.736669),
+    ("Cuencamé III A1", 24.980356, -103.734326), ("León Guzmán A2", 25.519483, -103.63969), ("León Guzmán", 25.520619, -103.639462),
+    ("León Guzmán A1", 25.519463, -103.639408), ("Zacapalco", 18.537976, -99.447394), ("Jalostotitlán A1", 21.117576, -102.455541),
+    ("Jalostotitlán A1", 21.119064, -102.455793), ("Jalostotitlán A2", 21.120273, -102.455859), ("San Juan A1", 21.224694, -102.313144),
+    ("San Juan A2", 21.220673, -102.313651), ("Tepatitlán", 20.824618, -102.794958), ("Tepatitlán Aux.", 20.82091, -102.794064)
+]
 
 uploaded_file = st.file_uploader("Cargue su archivo de telemetría (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
@@ -72,7 +194,7 @@ if uploaded_file is not None:
         st.subheader("📊 Vista Previa de Datos Telemáticos")
         st.dataframe(df.head(20), use_container_width=True)
         
-        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML / Excel / HTML")
+        st.subheader("⚙️ Módulos de Procesamiento y Exportación KML")
         
         def procesar_lat_lon(raw_lat, raw_lon):
             try:
@@ -121,10 +243,10 @@ if uploaded_file is not None:
             
             return " ".join(kml_road_coords)
 
-        b1, b2, b3, b4 = st.columns(4)
+        b1, b2, b3 = st.columns(3)
         
         with b1:
-            if st.button("🌐 KML Completo"):
+            if st.button("🌐 Generar KML Completo con Carreteras y Pines"):
                 if lat_col and lon_col:
                     with st.spinner("Generando ruta completa..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
@@ -162,15 +284,16 @@ if uploaded_file is not None:
     {''.join(placemarks_pines)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Completo", data=kml_c, file_name=f"ruta_completa_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan coordenadas.")
+                    st.error("Faltan columnas de coordenadas.")
                 
         with b2:
-            if st.button("📍 KML Paradas"):
+            if st.button("📍 Generar KML Paradas (Con Ruta, Casetas y Paradas)"):
                 if lat_col and lon_col and vel_col:
-                    with st.spinner("Calculando ruta y paradas..."):
+                    with st.spinner("Calculando ruta, casetas y paradas rojas..."):
                         coords_str = obtener_ruta_osrm_por_lotes(df, lat_col, lon_col)
+                        
                         lat_ini, lon_ini = 0, 0
                         lat_fin, lon_fin = 0, 0
                         for _, row in df.iterrows():
@@ -185,6 +308,7 @@ if uploaded_file is not None:
                                 break
                         
                         kml_elements = []
+                        
                         if coords_str:
                             kml_elements.append(f"""
     <Placemark>
@@ -192,12 +316,33 @@ if uploaded_file is not None:
       <styleUrl>#estiloLineaNavegacion</styleUrl>
       <LineString><tessellate>1</tessellate><coordinates>{coords_str}</coordinates></LineString>
     </Placemark>""")
+                        
                         if lat_ini != 0:
                             kml_elements.append(f"""
     <Placemark>
       <name>ORIGEN / INICIO</name>
       <styleUrl>#pinInicio</styleUrl>
       <Point><coordinates>{lon_ini},{lat_ini},0</coordinates></Point>
+    </Placemark>""")
+
+                        casetas_agregadas = set()
+                        for _, row in df.iterrows():
+                            lat_gps, lon_gps = procesar_lat_lon(row[lat_col], row[lon_col])
+                            ev = str(row[evento_col]).upper() if evento_col in df.columns else ''
+                            ubi = str(row[ubicacion_col]).upper() if ubicacion_col in df.columns else ''
+                            
+                            if lat_gps != 0 and lon_gps != 0:
+                                for c_nombre, c_lat, c_lon in CASETAS_DB:
+                                    if c_nombre not in casetas_agregadas:
+                                        if abs(lat_gps - c_lat) < 0.03 and abs(lon_gps - c_lon) < 0.03 or (c_nombre.upper() in ubi or c_nombre.upper() in ev):
+                                            casetas_agregadas.add(c_nombre)
+                                            desc_caseta = f"<b>[CASETA DE PEAJE]</b><br><b>Nombre:</b> {c_nombre}"
+                                            kml_elements.append(f"""
+    <Placemark>
+      <name>{c_nombre}</name>
+      <styleUrl>#pinCaseta</styleUrl>
+      <description><![CDATA[{desc_caseta}]]></description>
+      <Point><coordinates>{c_lon},{c_lat},0</coordinates></Point>
     </Placemark>""")
 
                         contador_paradas = 0
@@ -207,6 +352,7 @@ if uploaded_file is not None:
                                 vel = float(row[vel_col]) if vel_col else 0
                                 fec = str(row[fecha_col]) if fecha_col in df.columns else ''
                                 ubi = row[ubicacion_col] if ubicacion_col in df.columns else ''
+                                
                                 if vel == 0:
                                     contador_paradas += 1
                                     desc_parada = f"<b>[UNIDAD DETENIDA]</b><br><b>Unidad:</b> {unit_eval}<br><b>Fecha/Hora:</b> {fec}<br><b>Ubicación:</b> {ubi}"
@@ -229,18 +375,18 @@ if uploaded_file is not None:
                     kml_p = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Ruta de Navegación con Paradas - {unit_eval}</name>
+    <name>Ruta de Navegación con Casetas y Paradas - {unit_eval}</name>
     <Style id="estiloLineaNavegacion"><LineStyle><color>ffFF8800</color><width>5</width></LineStyle></Style>
     <Style id="pinInicio"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>
     <Style id="pinFin"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-square.png</href></Icon></IconStyle></Style>
     <Style id="pinDetenido"><IconStyle><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href></Icon></IconStyle></Style>
+    <Style id="pinCaseta"><IconStyle><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-blank.png</href></Icon></IconStyle></Style>
     {''.join(kml_elements)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Paradas y Casetas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
-                    st.error("Faltan columnas necesarias.")
-                
+                    st.error("Faltan columnas necesarias para procesar las paradas.")
         with b3:
             if st.button("🔍 Extraer Ubicaciones"):
                 if lat_col and lon_col and ubicacion_col:
