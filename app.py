@@ -11,6 +11,12 @@ st.set_page_config(
     layout="wide"
 )
 
+with st.sidebar:
+    # Puedes usar un enlace web directo de tu logo o una ruta local (ej. "logo.png")
+    st.image("https://img.icons8.com/color/96/experimental-globe-zed.png", width=120, caption="LULYLU Logistic")
+    st.header("Panel de Control")
+    st.markdown("---")
+
 # ==========================================
 # 🎨 ESTILOS CSS CON ALINEACIÓN PERFECTA
 # ==========================================
