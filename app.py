@@ -96,7 +96,7 @@ st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_
 # ==========================================
 with st.sidebar:
     # 🖼️ Imagen corporativa en la barra lateral
-    st.image("barrax.jpg", use_container_width=True)
+    st.image("BARRASSS.PNG", use_container_width=True)
     
     st.header("Panel de Control")
     st.markdown("---")
