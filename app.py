@@ -161,7 +161,9 @@ elif authentication_status == True:
                 st.markdown("""
                 ### Bienvenida al Sistema
                 Esta herramienta automatiza el análisis de telemetría vehicular, geocodificación, detección de casetas de peaje, generación de rutas en Google Earth (KML) y reportes ejecutivos en HTML/PDF.
-                  ---
+            
+            ---
+            
             ### 📋 1. Requisitos del Archivo de Entrada (Excel / CSV)
             Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
             * **Unidad / Vehículo:** Identificador del tractocamión o unidad.
