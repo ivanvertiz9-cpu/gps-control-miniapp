@@ -63,6 +63,11 @@ if authentication_status == False:
 elif authentication_status == None:
     st.sidebar.warning("Por favor, ingrese sus datos de acceso.")
     st.info("👆 **Bienvenido al Sistema de Control de Ruta y Telemetría GPS.** Inicie sesión en la barra lateral con sus credenciales autorizadas para desbloquear la plataforma.")
+# 📸 IMAGEN DE BIENVENIDA (Aparece aquí abajo centrada)
+    col_w1, col_w2, col_w3 = st.columns([1, 2, 1])
+    with col_w2:
+        st.image("MONITOREOR.jpg", caption="Centro de Monitoreo Logístico", use_container_width=True)
+
 elif authentication_status == True:
     
     # 🔓 TODO LO QUE ESTÁ AQUÍ ADENTRO SÓLO SE MUESTRA SI YA INICIÓ SESIÓN
