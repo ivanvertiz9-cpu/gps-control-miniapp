@@ -11,6 +11,19 @@ st.set_page_config(
     page_icon="🛰️",
     layout="wide"
 )
+# 🔒 OCULTAR MENÚ NATIVO Y BOTONES DE STREAMLIT
+st.markdown("""
+<style>
+    /* Ocultar el menú superior de los tres puntos (...) */
+    #MainMenu {visibility: hidden;}
+    
+    /* Ocultar la barra superior completa (Share, Star, GitHub, Edit, etc.) */
+    header {visibility: hidden;}
+    
+    /* Ocultar el pie de página "Made with Streamlit" */
+    footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🔐 CONFIGURACIÓN DE USUARIOS
