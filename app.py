@@ -43,8 +43,7 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
     
-    /* 🚀 BOTONES Y ENLACES DE DESCARGA GRANDES Y VISIBLES */
-    div.stButton > button, div.stDownloadButton > button {
+div.stButton > button {
         background-color: #0284c7 !important;
         color: white !important;
         border-radius: 10px !important;
@@ -57,23 +56,52 @@ st.markdown("""
         transition: all 0.3s ease !important;
     }
     
-    div.stButton > button:hover, div.stDownloadButton > button:hover {
+    div.stButton > button:hover {
         background-color: #0369a1 !important;
         box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.25) !important;
         transform: translateY(-2px);
     }
     
-    div.stButton > button p, div.stDownloadButton > button p {
-        font-size: 18px !important;
-        font-weight: 700 !important;
+   /* 🔵 Estilo exclusivo para los botones normales (Ej. KML Completo) */
+    div.stButton > button {
+        background-color: #0284c7 !important;
         color: white !important;
+        border-radius: 10px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;       
+        padding: 1rem 1.5rem !important;  
+        width: 100% !important;           
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s ease !important;
     }
-
-    /* 🎯 EMPUJAR LOS BOTONES HACIA ABAJO */
-    div[data-testid="stHorizontalBlock"] > div {
-        margin-top: 15px !important;
+    
+    div.stButton > button:hover {
+        background-color: #0369a1 !important;
+        box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.25) !important;
+        transform: translateY(-2px);
     }
-
+    
+    /* 🟢 Estilo exclusivo para los botones de descarga (Ej. Descargar KML) */
+    div.stDownloadButton > button {
+        background-color: #16a34a !important; /* Color verde (puedes cambiar el código hexadecimal por el que prefieras) */
+        color: white !important;
+        border-radius: 10px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;       
+        padding: 1rem 1.5rem !important;  
+        width: 100% !important;           
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    div.stDownloadButton > button:hover {
+        background-color: #15803d !important; /* Verde más oscuro al pasar el cursor */
+        box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.25) !important;
+        transform: translateY(-2px);
+    }
+    
     /* Tarjetas de métricas */
     [data-testid="stMetric"] {
         background-color: #ffffff;
