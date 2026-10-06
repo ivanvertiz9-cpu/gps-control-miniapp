@@ -33,18 +33,21 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-name, authentication_status, username = authenticator.login(location='sidebar')
-# ==========================================
-# 🛑 VALIDACIÓN DE SESIÓN
-# ==========================================
+authenticator.login(location='sidebar')
+
+# Utiliza st.session_state para verificar si el usuario entró correctamente
+authentication_status = st.session_state.get('authentication_status')
+name = st.session_state.get('name')
+username = st.session_state.get('username')
+
 if authentication_status == False:
     st.sidebar.error("Usuario o contraseña incorrectos")
 elif authentication_status == None:
     st.sidebar.warning("Por favor, ingrese sus datos de acceso.")
-    st.info("👆 **Bienvenido al Sistema.** Inicie sesión en la barra lateral con sus credenciales autorizadas para acceder a la plataforma de telemetría.")
+    st.info("👆 **Bienvenido al Sistema.** Inicie sesión en la barra lateral con sus credenciales autorizadas.")
 elif authentication_status == True:
     
-    # Botón para cerrar sesión y saludo en la barra lateral
+    # Botón para cerrar sesión en la barra lateral
     authenticator.logout("Cerrar Sesión", "sidebar")
     st.sidebar.markdown(f"Bienvenido(a), **{name}**")
     st.sidebar.markdown("---")
