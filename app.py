@@ -84,7 +84,7 @@ div.stButton > button {
     
     /* 🟢 Estilo exclusivo para los botones de descarga (Ej. Descargar KML) */
     div.stDownloadButton > button {
-        background-color: #16a34a !important; /* Color verde (puedes cambiar el código hexadecimal por el que prefieras) */
+        background-color: #ea580c !important; /* Color verde (puedes cambiar el código hexadecimal por el que prefieras) */
         color: white !important;
         border-radius: 10px !important;
         border: none !important;
