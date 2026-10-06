@@ -542,7 +542,7 @@ if uploaded_file is not None:
     {''.join(kml_elements)}
   </Document>
 </kml>"""
-                    st.download_button("📥 Descargar KML Paradas y Casetas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
+                    st.download_button("📥 Descargar KML Paradas", data=kml_p, file_name=f"paradas_casetas_{unit_eval}.kml", mime="application/vnd.google-earth.kml+xml")
                 else:
                     st.error("Faltan columnas necesarias para procesar las paradas.")
  
