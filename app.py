@@ -96,7 +96,7 @@ st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterp
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 
 # 📸 CARGA TU IMAGEN LOCAL DESDE LA CARPETA DEL PROYECTO
-st.image("MONITOREOR.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
+st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
 
 # ==========================================
 # 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA
