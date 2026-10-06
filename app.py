@@ -103,9 +103,7 @@ with st.sidebar:
     
     mostrar_manual = st.checkbox("📖 Ver Manual de Usuario", value=False)
     st.divider()
-    st.markdown("### 🏢 SISTEMA DE CONTROL DE RUTA Y TELEMETRIA")
-    st.caption("Control de Operaciones y Tráfico")
-    
+       
     if mostrar_manual:
         st.markdown("""
         ### 📋 1. Requisitos del Archivo de Entrada
