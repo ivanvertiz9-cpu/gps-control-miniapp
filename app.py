@@ -96,8 +96,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 📸 CARGA TU IMAGEN PRINCIPAL DESDE LA CARPETA DEL PROYECTO
-st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
+# Creamos 3 columnas y usamos la del centro (la de mayor tamaño relativo, o ajustando proporciones)
+col1, col2, col3 = st.columns([1, 2, 1])
 
+with col2:
+    st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
 # ==========================================
 # 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA (BARRA LATERAL)
 # ==========================================
