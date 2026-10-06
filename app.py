@@ -146,7 +146,7 @@ elif authentication_status == True:
         st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
 
   # ==========================================
-    # 📖 MANUAL DE USUARIO
+    # 📖 MANUAL DE USUARIO (Corregido para Sidebar)
     # ==========================================
     with st.sidebar:
         st.image("BARRASSS.PNG", use_container_width=True)
@@ -157,34 +157,33 @@ elif authentication_status == True:
         st.divider()
             
         if mostrar_manual:
-            with st.expander("📘 MANUAL DE USUARIO Y GUÍA DE OPERACIÓN", expanded=True):
-                st.markdown("""
-                ### Bienvenida al Sistema
-                Esta herramienta automatiza el análisis de telemetría vehicular, geocodificación, detección de casetas de peaje, generación de rutas en Google Earth (KML) y reportes ejecutivos en HTML/PDF.
-            
-            ---
-            
-            ### 📋 1. Requisitos del Archivo de Entrada (Excel / CSV)
-            Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
-            * **Unidad / Vehículo:** Identificador del tractocamión o unidad.
-            * **Evento:** Descripción del evento reportado por el GPS.
-            * **Ubicación:** Referencia textual o dirección reportada.
-            * **Fecha / Hora:** Marca temporal del registro (indispensable para ordenar el trayecto cronológicamente).
-            * **Velocidad / Speed:** Velocidad de desplazamiento en km/h.
-            * **Latitud / Lat:** Coordenada de latitud.
-            * **Longitud / Lon / Long:** Coordenada de longitud.
+            # Eliminamos el expander y dejamos el markdown alineado a la izquierda
+            st.markdown("""
+### **Bienvenida al Sistema**
+Esta herramienta automatiza el análisis de telemetría vehicular, geocodificación, detección de casetas de peaje, generación de rutas en Google Earth (KML) y reportes ejecutivos en HTML/PDF.
 
-            ---
+---
 
-            ### 🛠️ 2. Descripción de Botones y Módulos de Exportación
-            Una vez cargado y procesado tu archivo, aparecerán 4 opciones principales de exportación:
+### **📋 1. Requisitos del Archivo de Entrada**
+Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
+* **Unidad / Vehículo:** Identificador del tractocamión o unidad.
+* **Evento:** Descripción del evento reportado por el GPS.
+* **Ubicación:** Referencia textual o dirección reportada.
+* **Fecha / Hora:** Marca temporal del registro (indispensable para ordenar el trayecto cronológicamente).
+* **Velocidad / Speed:** Velocidad de desplazamiento en km/h.
+* **Latitud / Lat:** Coordenada de latitud.
+* **Longitud / Lon / Long:** Coordenada de longitud.
 
-            1. **🌐 KML Completo:** Traza la línea de recorrido vial real (usando OSRM) y coloca un pin en cada registro.
-            2. **📍 KML Paradas y Casetas:** Muestra el origen, cruza la ruta contra la base de datos de casetas de peaje, marca paradas de 0 km/h y finaliza con el destino.
-            3. **🔍 Extraer Ubicaciones:** Geocodificación inversa en tiempo real mediante OpenStreetMap.
-            4. **📋 Control de Ruta (HTML):** Informe tabular de orígenes, paradas (>5 min) y destino, con botón para guardar como PDF.
-            """)
-    st.divider()    
+---
+
+### **🛠️ 2. Descripción de Botones y Módulos**
+Una vez cargado y procesado tu archivo, aparecerán 4 opciones principales de exportación:
+
+1. **🌐 KML Completo:** Traza la línea de recorrido vial real (usando OSRM) y coloca un pin en cada registro.
+2. **📍 KML Paradas y Casetas:** Muestra el origen, cruza la ruta contra la base de datos de casetas de peaje, marca paradas de 0 km/h y finaliza con el destino.
+3. **🔍 Extraer Ubicaciones:** Geocodificación inversa en tiempo real mediante OpenStreetMap.
+4. **📋 Control de Ruta (HTML):** Informe tabular de orígenes, paradas (>5 min) y destino, con botón para guardar como PDF.
+""")
     # Base de datos integrada de Casetas
     CASETAS_DB = [
         ("Esperanza", 18.870777, -97.385869), ("Amozoc II", 19.063585, -98.069075), ("Cantona", 19.507568, -97.497774),
