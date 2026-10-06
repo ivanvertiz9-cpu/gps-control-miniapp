@@ -88,6 +88,13 @@ st.markdown("""
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.7")
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 
+# 👈 AQUÍ PUEDES COLOCAR EL BANNER GUÍA
+st.markdown("""
+<div style="background: linear-gradient(90deg, #0f172a, #0284c7); color: white; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px;">
+    👈 ⬅️ ¡Atención! Usa las flechas para ubicar el <b>PANEL DE CONTROL / MENÚ</b> en la barra lateral.
+</div>
+""", unsafe_allow_html=True)
+
 # 📸 CARGA TU IMAGEN PRINCIPAL DESDE LA CARPETA DEL PROYECTO
 st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
 
