@@ -11,12 +11,6 @@ st.set_page_config(
     layout="wide"
 )
 
-with st.sidebar:
-    # Puedes usar un enlace web directo de tu logo o una ruta local (ej. "logo.png")
-    st.image("https://img.icons8.com/color/96/experimental-globe-zed.png", width=120, caption="LULYLU Logistic")
-    st.header("Panel de Control")
-    st.markdown("---")
-
 # ==========================================
 # 🎨 ESTILOS CSS CON ALINEACIÓN PERFECTA
 # ==========================================
@@ -102,20 +96,16 @@ st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_
 # 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA
 # ==========================================
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/experimental-globe-zed.png", width=80)
-    st.header("Panel de Control")
+    # 🖼️ Aquí se coloca tu imagen exclusivamente en la barra lateral
+    st.image("barrax.jpg", use_container_width=True)
     
-    # Botón en barra lateral para desplegar el manual de uso
+    st.header("Panel de Control")
+    st.markdown("---")
+    
     mostrar_manual = st.checkbox("📖 Ver Manual de Usuario", value=False)
     st.divider()
-
-if mostrar_manual:
-    with st.expander("📘 MANUAL DE USUARIO Y GUÍA DE OPERACIÓN", expanded=True):
-        st.markdown("""
-        ### Bienvenida al Sistema de Control de Ruta y Telemetría GPS
-        Esta herramienta está diseñada para automatizar el análisis de telemetría vehicular, geocodificación, detección de casetas de peaje, generación de rutas en Google Earth (KML) y reportes ejecutivos en HTML/PDF.
-
-        ---
+    st.markdown("### 🏢 LULYLU LOGISTIC")
+    st.caption("Control de Operaciones y Tráfico")        ---
 
         ### 📋 1. Requisitos del Archivo de Entrada (Excel / CSV)
         Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
