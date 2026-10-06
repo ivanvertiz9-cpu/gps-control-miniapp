@@ -4,12 +4,51 @@ import requests
 import time
 import io
 from datetime import datetime
+import streamlit_authenticator as stauth
 
 st.set_page_config(
     page_title="Sistema de Control de Ruta y Telemetría GPS",
     page_icon="🛰️",
     layout="wide"
 )
+
+# ==========================================
+# 🔐 CONFIGURACIÓN DE USUARIOS (Control de Acceso)
+# ==========================================
+names = ["Administrador LulyLu", "Agente de Tráfico"]
+usernames = ["admin", "trafico"]
+passwords = ["12345", "abcde"] # Puedes cambiar las contraseñas aquí
+
+credentials = {
+    "usernames": {
+        usernames[0]: {"name": names[0], "password": passwords[0]},
+        usernames[1]: {"name": names[1], "password": passwords[1]}
+    }
+}
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "cookie_control_ruta",
+    "clave_secreta_cookie",
+    cookie_expiry_days=30
+)
+
+name, authentication_status, username = authenticator.login("Iniciar Sesión", "sidebar")
+
+# ==========================================
+# 🛑 VALIDACIÓN DE SESIÓN
+# ==========================================
+if authentication_status == False:
+    st.sidebar.error("Usuario o contraseña incorrectos")
+elif authentication_status == None:
+    st.sidebar.warning("Por favor, ingrese sus datos de acceso.")
+    st.info("👆 **Bienvenido al Sistema.** Inicie sesión en la barra lateral con sus credenciales autorizadas para acceder a la plataforma de telemetría.")
+elif authentication_status == True:
+    
+    # Botón para cerrar sesión y saludo en la barra lateral
+    authenticator.logout("Cerrar Sesión", "sidebar")
+    st.sidebar.markdown(f"Bienvenido(a), **{name}**")
+    st.sidebar.markdown("---")
 
 # ==========================================
 # 🎨 ESTILOS CSS CON ALINEACIÓN PERFECTA
