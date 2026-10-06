@@ -119,7 +119,7 @@ st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y repor
 # 👈 AQUÍ PUEDES COLOCAR EL BANNER GUÍA
 st.markdown("""
 <div style="background: linear-gradient(90deg, #0f172a, #0284c7); color: white; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px;">
-    👈 (<<) ¡Atención! Usa las flechas para ubicar el <b>PANEL DE CONTROL / MENÚ</b> en la barra lateral.
+    👈 (>>) ¡Atención! Usa las flechas para ubicar el <b>PANEL DE CONTROL / MENÚ</b> en la barra lateral.
 </div>
 """, unsafe_allow_html=True)
 
