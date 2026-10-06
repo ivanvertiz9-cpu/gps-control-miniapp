@@ -161,8 +161,29 @@ elif authentication_status == True:
                 st.markdown("""
                 ### Bienvenida al Sistema
                 Esta herramienta automatiza el análisis de telemetría vehicular, geocodificación, detección de casetas de peaje, generación de rutas en Google Earth (KML) y reportes ejecutivos en HTML/PDF.
-                """)
-        st.divider()    # Base de datos integrada de Casetas
+                  ---
+            ### 📋 1. Requisitos del Archivo de Entrada (Excel / CSV)
+            Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
+            * **Unidad / Vehículo:** Identificador del tractocamión o unidad.
+            * **Evento:** Descripción del evento reportado por el GPS.
+            * **Ubicación:** Referencia textual o dirección reportada.
+            * **Fecha / Hora:** Marca temporal del registro (indispensable para ordenar el trayecto cronológicamente).
+            * **Velocidad / Speed:** Velocidad de desplazamiento en km/h.
+            * **Latitud / Lat:** Coordenada de latitud.
+            * **Longitud / Lon / Long:** Coordenada de longitud.
+
+            ---
+
+            ### 🛠️ 2. Descripción de Botones y Módulos de Exportación
+            Una vez cargado y procesado tu archivo, aparecerán 4 opciones principales de exportación:
+
+            1. **🌐 KML Completo:** Traza la línea de recorrido vial real (usando OSRM) y coloca un pin en cada registro.
+            2. **📍 KML Paradas y Casetas:** Muestra el origen, cruza la ruta contra la base de datos de casetas de peaje, marca paradas de 0 km/h y finaliza con el destino.
+            3. **🔍 Extraer Ubicaciones:** Geocodificación inversa en tiempo real mediante OpenStreetMap.
+            4. **📋 Control de Ruta (HTML):** Informe tabular de orígenes, paradas (>5 min) y destino, con botón para guardar como PDF.
+            """)
+    st.divider()    
+    # Base de datos integrada de Casetas
     CASETAS_DB = [
         ("Esperanza", 18.870777, -97.385869), ("Amozoc II", 19.063585, -98.069075), ("Cantona", 19.507568, -97.497774),
         ("Cantona A1", 19.506554, -97.495453), ("Cantona A2", 19.509866, -97.497172), ("Cuapiaxtla", 19.310368, -97.797562),
