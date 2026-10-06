@@ -69,11 +69,9 @@ st.markdown("""
         color: white !important;
     }
 
-   /* 🎯 EMPUJAR LOS BOTONES HACIA ABAJO */
-    /* Modifica el valor de 'margin-top' si quieres bajarlos todavía más (ej. 25px o 30px) */
+    /* 🎯 EMPUJAR LOS BOTONES HACIA ABAJO */
     div[data-testid="stHorizontalBlock"] > div {
         margin-top: 15px !important;
-    
     }
 
     /* Tarjetas de métricas */
@@ -86,17 +84,18 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 st.title("🛰️ Sistema de Control de Ruta y Telemetría GPS | Mini-App Enterprise v2.7")
 st.markdown("Plataforma web con detección de casetas, enrutamiento OSRM y reporte de control de ruta (Orígenes, Paradas y Destino).")
 
-# 📸 CARGA TU IMAGEN LOCAL DESDE LA CARPETA DEL PROYECTO
+# 📸 CARGA TU IMAGEN PRINCIPAL DESDE LA CARPETA DEL PROYECTO
 st.image("SISTEMM.jpg", caption="Centro de Control y Monitoreo Logístico", use_container_width=True)
 
 # ==========================================
-# 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA
+# 📖 SECCIÓN DE MANUAL DE USUARIO / AYUDA (BARRA LATERAL)
 # ==========================================
 with st.sidebar:
-    # 🖼️ Aquí se coloca tu imagen exclusivamente en la barra lateral
+    # 🖼️ Imagen corporativa en la barra lateral
     st.image("barrax.jpg", use_container_width=True)
     
     st.header("Panel de Control")
@@ -105,43 +104,30 @@ with st.sidebar:
     mostrar_manual = st.checkbox("📖 Ver Manual de Usuario", value=False)
     st.divider()
     st.markdown("### 🏢 LULYLU LOGISTIC")
-    st.caption("Control de Operaciones y Tráfico")        ---
-
-        ### 📋 1. Requisitos del Archivo de Entrada (Excel / CSV)
-        Para que la aplicación detecte automáticamente las columnas sin importar el orden, asegúrate de que tu archivo contenga encabezados que incluyan o se parezcan a:
-        * **Unidad / Vehículo:** Identificador del tractocamión o unidad.
-        * **Evento:** Descripción del evento reportado por el GPS.
-        * **Ubicación:** Referencia textual o dirección reportada.
-        * **Fecha / Hora:** Marca temporal del registro (indispensable para ordenar el trayecto cronológicamente).
-        * **Velocidad / Speed:** Velocidad de desplazamiento en km/h.
-        * **Latitud / Lat:** Coordenada de latitud.
-        * **Longitud / Lon / Long:** Coordenada de longitud.
-
-        ---
-
-        ### 🛠️ 2. Descripción de Botones y Módulos de Exportación
-        Una vez cargado y procesado tu archivo, aparecerán 4 opciones principales de exportación:
-
-        1. **🌐 KML Completo:**
-           * **Qué hace:** Traza la línea de recorrido vial real sobre las carreteras (usando OSRM) y coloca un pin en cada registro de telemetría.
-           * **Colores de pines:** 🔴 Rojo (0 km/h - Detenido), 🟡 Amarillo (1 a 40 km/h - Tránsito lento), 🟢 Verde (> 40 km/h - Marcha regular).
-
-        2. **📍 KML Paradas y Casetas:**
-           * **Qué hace:** Genera un archivo limpio enfocado en la operación logística. Muestra el punto de **ORIGEN** (verde), cruza la ruta contra la base de datos de **Casetas de Peaje** (pines amarillos), marca exclusivamente las **Paradas de 0 km/h** con chinchetas rojas y finaliza con el **DESTINO** (cuadro rojo).
-
-        3. **🔍 Extraer Ubicaciones:**
-           * **Qué hace:** Utiliza geocodificación inversa en tiempo real (OpenStreetMap) para traducir coordenadas geográficas vacías a direcciones postales reales, entregando un Excel listo para auditoría.
-
-        4. **📋 Control de Ruta (HTML):**
-           * **Qué hace:** Crea un informe ejecutivo tabular detallando el **Origen**, los tiempos exactos de permanencia en **Paradas (> 5 minutos)** y el **Destino**. Incluye un botón integrado para imprimir o **Guardar como PDF** directamente desde tu navegador.
+    st.caption("Control de Operaciones y Tráfico")
+    
+    if mostrar_manual:
+        st.markdown("""
+        ### 📋 1. Requisitos del Archivo de Entrada
+        Asegúrate de que tu archivo contenga encabezados que incluyan:
+        * **Unidad / Vehículo**
+        * **Evento**
+        * **Ubicación**
+        * **Fecha / Hora**
+        * **Velocidad / Speed**
+        * **Latitud / Lat**
+        * **Longitud / Lon / Long**
 
         ---
 
-        ### ⚠️ Solución de Problemas Frecuentes
-        * *Error al leer el archivo:* Verifica que tu archivo de Excel no tenga celdas combinadas en la fila de encabezados.
-        * *Coordenadas invertidas:* El sistema cuenta con un autodetector inteligente que corrige automáticamente si la latitud y longitud vienen intercambiadas.
+        ### 🛠️ 2. Descripción de Botones
+        1. **KML Completo:** Traza la ruta vial real (OSRM) con pines de colores por velocidad.
+        2. **KML Paradas y Casetas:** Filtra origen, destino, casetas de peaje y paradas de 0 km/h.
+        3. **Extraer Ubicaciones:** Traduce coordenadas vacías a direcciones postales reales mediante geocodificación.
+        4. **Control de Ruta (HTML):** Genera reporte tabular de tiempos de permanencia con opción a PDF.
         """)
     st.divider()
+
 # Base de datos integrada de Casetas (Nombre, Latitud, Longitud)
 CASETAS_DB = [
     ("Esperanza", 18.870777, -97.385869), ("Amozoc II", 19.063585, -98.069075), ("Cantona", 19.507568, -97.497774),
@@ -563,7 +549,6 @@ if uploaded_file is not None:
                         html_rows = []
                         contador_paso = 1
                         
-                        # 1. ORIGEN (Primer punto válido)
                         for _, row in df.iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
@@ -581,7 +566,6 @@ if uploaded_file is not None:
                                 contador_paso += 1
                                 break
                         
-                        # 2. INTERMEDIOS (Paradas estrictas de 0 km/h y reinicio de marcha)
                         i = 0
                         while i < len(df):
                             row = df.iloc[i]
@@ -594,7 +578,6 @@ if uploaded_file is not None:
                                     ubi_parada = str(row[ubicacion_col]) if ubicacion_col in df.columns else ""
                                     lat_p, lon_p = lat, lon
                                     
-                                    # Buscar el momento en que reinicia la marcha (> 0 km/h)
                                     j = i + 1
                                     t_fin = t_inicio
                                     texto_fin = "En detención"
@@ -615,7 +598,6 @@ if uploaded_file is not None:
                                     
                                     minutos = int((t_fin - t_inicio).total_seconds() / 60)
                                     
-                                    # Registrar solo si la parada es mayor a 5 minutos
                                     if minutos > 5:
                                         if minutos < 60:
                                             t_texto = f"{minutos} min"
@@ -639,7 +621,6 @@ if uploaded_file is not None:
                             else:
                                 i += 1
 
-                        # 3. DESTINO (Último punto válido)
                         for _, row in df.iloc[::-1].iterrows():
                             lat, lon = procesar_lat_lon(row[lat_col], row[lon_col])
                             if 10 <= lat <= 35 and -120 <= lon <= -80:
@@ -656,7 +637,7 @@ if uploaded_file is not None:
                                 </tr>""")
                                 break
 
-                        html_report = f"""<!DOCTYPE html>
+                    html_report = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -703,13 +684,13 @@ if uploaded_file is not None:
   </table>
 </body>
 </html>"""
-                        st.success("¡Reporte de Control de Ruta HTML generado con éxito!")
-                        st.download_button(
-                            "📥 Descargar Reporte HTML",
-                            data=html_report,
-                            file_name=f"control_ruta_{unit_eval}.html",
-                            mime="text/html"
-                        )
+                    st.success("¡Reporte de Control de Ruta HTML generado con éxito!")
+                    st.download_button(
+                        "📥 Descargar Reporte HTML",
+                        data=html_report,
+                        file_name=f"control_ruta_{unit_eval}.html",
+                        mime="text/html"
+                    )
                 else:
                     st.error("Faltan columnas de coordenadas o fecha.")
 
